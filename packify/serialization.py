@@ -5,7 +5,7 @@ from types import NoneType
 import struct
 
 
-SerializableType = Packable|dict|int|float|str|bytes|bytearray|NoneType
+SerializableType = Packable|dict|list|set|tuple|int|float|str|bytes|bytearray|NoneType
 
 
 def pack(data: SerializableType) -> bytes:
