@@ -120,6 +120,9 @@ This is not encouraged, but it is possible if you do not want to pass `inject`
 parameters. (Code should be easier to test when using the `inject` parameter
 instead of monkey-patching.)
 
+Full documentation can be found in
+[dox.md](https://github.com/k98kurz/packify/blob/master/dox.md), which was
+generated automagically by [autodox](https://pypi.org/project/autodox).
 
 ## Tests
 
