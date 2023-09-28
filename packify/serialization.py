@@ -1,22 +1,24 @@
 from __future__ import annotations
 from .errors import tressa
 from .interface import Packable
+from decimal import Decimal
 from types import NoneType
 import struct
 
 
-SerializableType = Packable|dict|list|set|tuple|int|float|str|bytes|bytearray|NoneType
+SerializableType = Packable|dict|list|set|tuple|int|float|Decimal|str|bytes|bytearray|NoneType
 
 
 def pack(data: SerializableType) -> bytes:
-    """Serializes an instance of a Packable implementation or
-        built-in type, recursively calling itself as necessary.
+    """Serializes an instance of a Packable implementation or built-in
+        type, recursively calling itself as necessary. Raises UsageError
+        if the type is not serializable.
     """
     tressa(isinstance(data, Packable) or \
-        type(data) in (dict, list, set, tuple, str, bytes, bytearray, int, float) or \
-            data is None,
+        type(data) in (dict, list, set, tuple, str, bytes, bytearray, int,
+                       float, Decimal) or data is None,
         'data type must be one of (Packable, list, set, tuple, ' + \
-        'str, bytes, bytearray, int, float, NoneType)')
+        'str, bytes, bytearray, int, float, Decimal, NoneType)')
 
     if isinstance(data, Packable):
         packed = bytes(data.__class__.__name__, 'utf-8').hex()
@@ -73,6 +75,15 @@ def pack(data: SerializableType) -> bytes:
             f'!1sId',
             b'f',
             8,
+            data
+        )
+
+    if type(data) is Decimal:
+        data = bytes(str(data), 'utf-8')
+        return struct.pack(
+            f'!1sI{len(data)}s',
+            b'D',
+            len(data),
             data
         )
 
@@ -148,12 +159,10 @@ def unpack(data: bytes, inject: dict = {}) -> SerializableType:
     if code == b'f':
         return struct.unpack(f'!Id{len(data)-12}s', data)[1]
 
-    # if code == b'd':
-    #     let_len, data = struct.unpack(f'!I{len(data)-4}s', data)
-    #     let_data, _ = struct.unpack(f'!{let_len}s{len(data)-let_len}s', data)
-    #     pairs = []
-    #     while len(let_data) > 0:
-    #         _, pair_len, _ = struct.unpack(f'!1sI{len(let_data)}')
+    if code == b'D':
+        s_len, data = struct.unpack(f'!I{len(data)-4}s', data)
+        s, _ = struct.unpack(f'!{s_len}s{len(data)-s_len}s', data)
+        return Decimal(str(s, 'utf-8'))
 
     if code == b'n':
         return None

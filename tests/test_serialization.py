@@ -1,6 +1,7 @@
 from __future__ import annotations
 from context import pack, unpack, Packable
 from dataclasses import dataclass, field
+from decimal import Decimal
 import struct
 import unittest
 
@@ -87,7 +88,8 @@ class TestSerialization(unittest.TestCase):
             123.456,
             "hello world",
             b"yellow submarine",
-            bytearray(b"just more bytes really")
+            bytearray(b"just more bytes really"),
+            Decimal('123.456'),
         ]
         for vector in vectors:
             packed = pack(vector)
@@ -107,7 +109,8 @@ class TestSerialization(unittest.TestCase):
                 StrWrapper("some key"),
                 StrWrapper("some value"),
             ),
-            None
+            None,
+            Decimal('123.456'),
         ]
         packed = pack(data)
         unpacked = unpack(
@@ -131,7 +134,8 @@ class TestSerialization(unittest.TestCase):
         data = set([
             123, 4321, "abc", "cba", b"abc", b"cba",
             PackableMapEntry(StrWrapper("123"), StrWrapper("321")),
-            None
+            None,
+            Decimal('123.456'),
         ])
         packed = pack(data)
         unpacked = unpack(
@@ -149,7 +153,8 @@ class TestSerialization(unittest.TestCase):
         data = tuple([
             123, 4321, "abc", "cba", b"abc", b"cba",
             PackableMapEntry(StrWrapper("123"), StrWrapper("321")),
-            None
+            None,
+            Decimal('123.456'),
         ])
         packed = pack(data)
         unpacked = unpack(
@@ -169,7 +174,8 @@ class TestSerialization(unittest.TestCase):
             "abc": "cba",
             b"abc": b"cba",
             StrWrapper("key"): PackableMapEntry(StrWrapper("123"), StrWrapper("321")),
-            "None": None
+            "None": None,
+            "Decimal": Decimal('123.456'),
         }
         packed = pack(data)
         unpacked = unpack(
