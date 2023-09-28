@@ -15,6 +15,7 @@ Usage is simple: import the package and call the pack/unpack functions.
 
 ```python
 from packify import pack, unpack
+from decimal import Decimal
 
 data = {
     123: 432.1,
@@ -36,6 +37,7 @@ data = {
         123,
         b'123',
     },
+    'Decimal': Decimal('123.321'),
 }
 
 packed = pack(data)
@@ -48,6 +50,7 @@ The following types are supported:
 
 - int
 - float
+- Decimal
 - str
 - bytes
 - bytearray
@@ -120,9 +123,9 @@ This is not encouraged, but it is possible if you do not want to pass `inject`
 parameters. (Code should be easier to test when using the `inject` parameter
 instead of monkey-patching.)
 
-The `pack` function will raise a `UsagePreconditionError` if the data is not
-serializable, and the `unpack` function will raise a `UsagePreconditionError` if
-it is unable to find a `Packable` class to unpack the relevant item.
+The `pack` function will raise a `UsageError` if the data is not serializable,
+and the `unpack` function will raise a `UsageError` if it is unable to find a
+`Packable` class to unpack the relevant item.
 
 Full documentation can be found in
 [dox.md](https://github.com/k98kurz/packify/blob/master/dox.md), which was
@@ -130,9 +133,9 @@ generated automagically by [autodox](https://pypi.org/project/autodox).
 
 ## Tests
 
-Since it is a simple package, there are only 5 tests, and they are e2e tests of
-both the `pack` and `unpack` functions. To run the tests, clone the repository
-and use the following:
+Since it is a simple package, there are only 7 tests, and they are mostly e2e
+tests of both the `pack` and `unpack` functions. To run the tests, clone the
+repository and use the following:
 
 ```bash
 python test/test_serialization.py
