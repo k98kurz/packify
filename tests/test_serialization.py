@@ -189,6 +189,32 @@ class TestSerialization(unittest.TestCase):
         for item in data:
             assert item in unpacked
 
+    def test_pack_dict_is_deterministic(self):
+        vector = {
+            'str': 'abc',
+            123: 321,
+            'Decimal': Decimal('123.321'),
+            'list': [
+                'abc',
+                123
+            ]
+        }
+        packed = pack(vector)
+        for _ in range(100):
+            assert pack(vector) == packed
+
+    def test_pack_set_is_deterministic(self):
+        vector = {
+            123,
+            'abc',
+            'str',
+            Decimal('123.321'),
+            (123, '321'),
+        }
+        packed = pack(vector)
+        for _ in range(100):
+            assert pack(vector) == packed
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -88,7 +88,7 @@ def pack(data: SerializableType) -> bytes:
         )
 
     if type(data) is dict:
-        items = b''.join([pack((key, value)) for key, value in data.items()])
+        items = b''.join(sorted([pack((key, value)) for key, value in data.items()]))
         return struct.pack(
             f'!1sI{len(items)}s',
             b'd',
