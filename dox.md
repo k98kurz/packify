@@ -32,4 +32,7 @@ serializable.
 Deserializes an instance of a Packable implementation or built-in type,
 recursively calling itself as necessary.
 
+## Values
+
+- SerializableType: UnionType
 

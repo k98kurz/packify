@@ -83,20 +83,24 @@ If a class that implements `Packable` is used, then it needs to be included in
 the `inject` parameter for calls to `unpack`. For example:
 
 ```python
+from dataclasses import dataclass, field
 from packify import pack, unpack
 
+@dataclass
 class Thing:
-    def __init__(self, data: str) -> None:
-        self.data = data
+    data: str = field()
+    amount: int = field()
+    fraction: float = field()
+    parts: list = field()
     def __eq__(self, other) -> bool:
-        return type(self) is type(other) and self.data == other.data
+        return type(self) is type(other) and self.pack() == other.pack()
     def pack(self) -> bytes:
-        return bytes(self.data, 'utf-8')
+        return pack((self.data, self.amount, self.fraction, self.parts))
     @classmethod
     def unpack(cls, data: bytes, /, *, inject: dict = {}):
-        return cls(str(data, 'utf-8'))
+        return cls(*unpack(data, inject={**globals(), **inject}))
 
-thing = Thing("hello world")
+thing = Thing("hello world", 123, 420.69, ['a', b'b', 3])
 packed = pack(thing)
 unpacked = unpack(packed, inject={'Thing': Thing})
 assert unpacked == thing
@@ -126,6 +130,9 @@ instead of monkey-patching.)
 The `pack` function will raise a `UsageError` if the data is not serializable,
 and the `unpack` function will raise a `UsageError` if it is unable to find a
 `Packable` class to unpack the relevant item.
+
+For convenience/use in annotations, a `SerializableType` is exported which
+includes the above type information.
 
 Full documentation can be found in
 [dox.md](https://github.com/k98kurz/packify/blob/master/dox.md), which was
