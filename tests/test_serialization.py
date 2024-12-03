@@ -216,5 +216,34 @@ class TestSerialization(unittest.TestCase):
             assert pack(vector) == packed
 
 
+class TestReportedEdgeCases(unittest.TestCase):
+    def test_pack_and_unpack_specific_dict(self):
+        test_vector = {
+            'field1': 'value1',
+            'field2': 2,
+            'field3': True,
+            'field4': b'123',
+            'field5': 1.23,
+            'field1nd': None,
+            'field1n': None,
+            'field2n': None,
+            'field3n': None,
+            'field4n': None,
+            'field5n': None,
+            'field1d': 'foobar',
+            'field2d': 123,
+            'field3d': True,
+            'field4d': b'123',
+            'field5d': 1.23,
+            'field2nd': 123,
+            'field3nd': True,
+            'field4nd': b'123',
+            'field5nd': 1.23,
+        }
+        packed = pack(test_vector)
+        unpacked = unpack(packed)
+        assert test_vector == unpacked
+
+
 if __name__ == '__main__':
     unittest.main()
