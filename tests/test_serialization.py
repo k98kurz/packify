@@ -1,5 +1,5 @@
 from __future__ import annotations
-from context import pack, unpack, Packable
+from context import pack, unpack, Packable, UsageError
 from dataclasses import dataclass, field
 from decimal import Decimal
 import struct
@@ -214,6 +214,11 @@ class TestSerialization(unittest.TestCase):
         packed = pack(vector)
         for _ in range(100):
             assert pack(vector) == packed
+
+    def test_unserializable_type_raises_error(self):
+        with self.assertRaises(UsageError) as e:
+            pack(lambda: None)
+        assert "<class 'function'> is not serializable" in str(e.exception)
 
 
 class TestReportedEdgeCases(unittest.TestCase):

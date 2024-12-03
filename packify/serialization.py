@@ -6,7 +6,7 @@ from types import NoneType
 import struct
 
 
-SerializableType = Packable|dict|list|set|tuple|int|float|Decimal|str|bytes|bytearray|NoneType
+SerializableType = Packable|dict|list|set|tuple|int|bool|float|Decimal|str|bytes|bytearray|NoneType
 
 
 def pack(data: SerializableType) -> bytes:
@@ -16,9 +16,10 @@ def pack(data: SerializableType) -> bytes:
     """
     tressa(isinstance(data, Packable) or \
         type(data) in (dict, list, set, tuple, str, bytes, bytearray, int,
-                       float, Decimal) or data is None,
+                       bool, float, Decimal) or data is None,
         'data type must be one of (Packable, list, set, tuple, ' + \
-        'str, bytes, bytearray, int, float, Decimal, NoneType)')
+        'str, bytes, bytearray, int, bool, float, Decimal, NoneType); ' + \
+        f'{type(data)} is not serializable')
 
     if isinstance(data, Packable):
         packed = bytes(data.__class__.__name__, 'utf-8').hex()
@@ -70,6 +71,14 @@ def pack(data: SerializableType) -> bytes:
             data
         )
 
+    if type(data) is bool:
+        return struct.pack(
+            f'!1sI?',
+            b'B',
+            1,
+            data
+        )
+
     if type(data) is float:
         return struct.pack(
             f'!1sId',
@@ -88,7 +97,10 @@ def pack(data: SerializableType) -> bytes:
         )
 
     if type(data) is dict:
-        items = b''.join(sorted([pack((key, value)) for key, value in data.items()]))
+        items = b''.join(sorted([
+            pack((key, value))
+            for key, value in data.items()
+        ]))
         return struct.pack(
             f'!1sI{len(items)}s',
             b'd',
@@ -155,6 +167,9 @@ def unpack(data: bytes, inject: dict = {}) -> SerializableType:
 
     if code == b'i':
         return struct.unpack(f'!II{len(data)-8}s', data)[1]
+
+    if code == b'B':
+        return struct.unpack(f'!I?', data)[1]
 
     if code == b'f':
         return struct.unpack(f'!Id{len(data)-12}s', data)[1]
