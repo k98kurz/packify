@@ -4,11 +4,11 @@ build-backend = "hatchling.build"
 
 [project]
 name = "packify"
-version = "0.2.2"
+version = "0.2.3"
 authors = [
   { name="k98kurz", email="k98kurz@gmail.com" },
 ]
-description = ""
+description = "Serialize and deserialize almost anything easily."
 readme = "readme.md"
 requires-python = ">=3.9"
 classifiers = [

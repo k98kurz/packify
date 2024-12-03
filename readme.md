@@ -22,15 +22,19 @@ data = {
     "abc": "cba",
     b"abc": b"cba",
     "None": None,
+    "true": True,
+    "false": False,
     'list': [
         '123',
         123,
         b'123',
+        True,
     ],
     'tuple': (
         '123',
         123,
         b'123',
+        False,
     ),
     'set': {
         '123',
@@ -49,6 +53,7 @@ assert unpacked == data
 The following types are supported:
 
 - int
+- bool
 - float
 - Decimal
 - str
@@ -140,17 +145,18 @@ generated automagically by [autodox](https://pypi.org/project/autodox).
 
 ## Tests
 
-Since it is a simple package, there are only 7 tests, and they are mostly e2e
-tests of both the `pack` and `unpack` functions. To run the tests, clone the
-repository and use the following:
+Since it is a simple package, there are only 9 tests, and they are mostly e2e
+tests of both the `pack` and `unpack` functions. After using this for a year, I
+found an edge case, and there is a test to prove it has been fixed. To run the
+tests, clone the repository and use the following:
 
 ```bash
-python test/test_serialization.py
+python tests/test_serialization.py
 ```
 
 ## License
 
-Copyleft (c) 2023 k98kurz
+Copyleft (c) 2023, 2024 k98kurz
 
 Permission to use, copy, modify, and/or distribute this software
 for any purpose with or without fee is hereby granted, provided

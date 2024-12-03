@@ -34,5 +34,5 @@ recursively calling itself as necessary.
 
 ## Values
 
-- SerializableType: UnionType
+- `SerializableType`: UnionType
 
