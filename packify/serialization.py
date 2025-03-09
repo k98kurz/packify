@@ -121,7 +121,7 @@ def pack(data: SerializableType) -> bytes:
         count = len(items)
         item_lens = [len(item) for item in items]
         category = LengthCategory.for_len(count)
-        item_category = LengthCategory.for_len(max(item_lens))
+        item_category = LengthCategory.for_len(max(item_lens) if len(item_lens) > 0 else 0)
         code = category.value | ({
             list: EncodedType.LIST,
             set: EncodedType.SET,
@@ -231,7 +231,7 @@ def pack(data: SerializableType) -> bytes:
         count = len(items)
         item_lens = [len(item) for item in items]
         category = LengthCategory.for_len(count)
-        item_category = LengthCategory.for_len(max(item_lens))
+        item_category = LengthCategory.for_len(max(item_lens) if len(item_lens) > 0 else 0)
         code = category.value | EncodedType.DICT
 
         fmt = f'!BB{category.fmt()}{count}{item_category.fmt()}'
