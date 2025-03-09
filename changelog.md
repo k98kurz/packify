@@ -1,3 +1,8 @@
+## 0.3.1
+
+- Bug fix: empty lists, tuples, sets, and dicts are now packed and unpacked
+  correctly
+
 ## 0.3.0
 
 - Replaced the type and length encoding system for space efficiency

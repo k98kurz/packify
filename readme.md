@@ -9,6 +9,12 @@ practically any data structure to and from bytes.
 pip install packify
 ```
 
+## Status
+
+Primary development is complete. Further development will be tracked in the
+[issues](https://github.com/k98kurz/packify/issues). Historical changes can be
+found in the [changelog](https://github.com/k98kurz/packify/blob/master/changelog.md).
+
 ## Usage
 
 Usage is simple: import the package and call the pack/unpack functions.
@@ -167,11 +173,10 @@ If you experience a bug and do not use Discord, open an issue on Github.
 
 ## Tests
 
-Since it is a focused package, there are only 11 tests, and they are mostly e2e
-tests of both the `pack` and `unpack` functions. After using this for a year, I
-found an edge case, and there is a test to prove it has been fixed. I also added
-2 fuzz tests to broaden the coverage of the test suite during a major refactor.
-To run the tests, clone the repository and use the following:
+Since it is a focused package, there are only 15 tests, and they consist of e2e
+tests of both the `pack` and `unpack` functions, a few tests covering reported
+bugs, and 2 fuzz tests to broaden the coverage of the test suite added after the
+v0.3.0 refactor. To run the tests, clone the repository and use the following:
 
 ```bash
 python tests/test_serialization.py
