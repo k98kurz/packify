@@ -89,9 +89,12 @@ class FuzzTest(unittest.TestCase):
         elif t is float:
             return random.uniform(-1000000, 1000000)
         elif t is str:
-            return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(random.randint(1, size_limit)))
+            return ''.join(
+                random.choice('abcdefghijklmnopqrstuvwxyz')
+                for _ in range(random.randint(0, size_limit))
+            )
         elif t is bytes:
-            return bytes(random.randint(0, 255) for _ in range(random.randint(1, size_limit)))
+            return bytes(random.randint(0, 255) for _ in range(random.randint(0, size_limit)))
         elif t is bool:
             return random.choice([True, False])
         elif t is Decimal:
@@ -120,7 +123,10 @@ class FuzzTest(unittest.TestCase):
         elif t == 'recursive':
             return self.generate_recursive_vector(recursive_limit - 1)
         elif t is set:
-            return set(self.generate_non_container(size_limit) for _ in range(random.randint(1, count_limit)))
+            return set(
+                self.generate_non_container(size_limit)
+                for _ in range(random.randint(0, count_limit))
+            )
         elif t is PackableMapEntry:
             return PackableMapEntry(
                 Wrapper(self.generate_basic_type(size_limit)),
@@ -142,21 +148,21 @@ class FuzzTest(unittest.TestCase):
                     if random.random() < 0.5
                     else self.generate_vector(recursive_limit - 1)
                 )
-                for _ in range(random.randint(1, count_limit))
+                for _ in range(random.randint(0, count_limit))
             }
         elif t is list:
             return [
                 self.generate_recursive_vector(recursive_limit - 1)
                 if random.random() < 0.5
                 else self.generate_vector(recursive_limit - 1)
-                for _ in range(random.randint(1, count_limit))
+                for _ in range(random.randint(0, count_limit))
             ]
         elif t is tuple:
             return tuple(
                 self.generate_recursive_vector(recursive_limit - 1)
                 if random.random() < 0.5
                 else self.generate_vector(recursive_limit - 1)
-                for _ in range(random.randint(1, count_limit))
+                for _ in range(random.randint(0, count_limit))
             )
 
     def test_wide(self):
