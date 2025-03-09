@@ -221,7 +221,7 @@ class TestSerialization(unittest.TestCase):
         assert "<class 'function'> is not serializable" in str(e.exception)
 
 
-class TestReportedEdgeCases(unittest.TestCase):
+class TestReportedBugs(unittest.TestCase):
     def test_pack_and_unpack_specific_dict(self):
         test_vector = {
             'field1': 'value1',
@@ -245,6 +245,30 @@ class TestReportedEdgeCases(unittest.TestCase):
             'field4nd': b'123',
             'field5nd': 1.23,
         }
+        packed = pack(test_vector)
+        unpacked = unpack(packed)
+        assert test_vector == unpacked
+
+    def test_pack_and_unpack_empty_list(self):
+        test_vector = []
+        packed = pack(test_vector)
+        unpacked = unpack(packed)
+        assert test_vector == unpacked
+
+    def test_pack_and_unpack_empty_dict(self):
+        test_vector = {}
+        packed = pack(test_vector)
+        unpacked = unpack(packed)
+        assert test_vector == unpacked
+
+    def test_pack_and_unpack_empty_tuple(self):
+        test_vector = ()
+        packed = pack(test_vector)
+        unpacked = unpack(packed)
+        assert test_vector == unpacked
+
+    def test_pack_and_unpack_empty_set(self):
+        test_vector = set()
         packed = pack(test_vector)
         unpacked = unpack(packed)
         assert test_vector == unpacked
