@@ -286,7 +286,7 @@ class FuzzTest(unittest.TestCase):
 
     def generate_vector(self, recursive_limit: int = 3) -> SerializableType:
         if recursive_limit <= 0:
-            return self.generate_basic_type()
+            return self.generate_non_container()
         size_limit = 66 // recursive_limit
         t = random.choice([int, float, str, bytes, bool, Decimal, dict, list, set, tuple, PackableMapEntry, StrWrapper])
         if t is int:
@@ -302,11 +302,11 @@ class FuzzTest(unittest.TestCase):
         elif t is Decimal:
             return Decimal(random.uniform(-1000000, 1000000))
         elif t is dict:
-            return {self.generate_basic_type(): self.generate_vector(recursive_limit - 1) for _ in range(random.randint(1, size_limit))}
+            return {self.generate_non_container(): self.generate_vector(recursive_limit - 1) for _ in range(random.randint(1, size_limit))}
         elif t is list:
             return [self.generate_vector(recursive_limit - 1) for _ in range(random.randint(1, size_limit))]
         elif t is set:
-            return set(self.generate_basic_type() for _ in range(random.randint(1, size_limit)))
+            return set(self.generate_non_container() for _ in range(random.randint(1, size_limit)))
         elif t is tuple:
             return tuple(self.generate_vector(recursive_limit - 1) for _ in range(random.randint(1, size_limit)))
         elif t is PackableMapEntry:
