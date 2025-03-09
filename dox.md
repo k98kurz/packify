@@ -36,6 +36,8 @@ Packable implementation).
 
 ### `version() -> str:`
 
+Returns the current version of the packify package.
+
 ## Values
 
 - `SerializableType`: UnionType

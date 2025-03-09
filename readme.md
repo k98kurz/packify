@@ -154,7 +154,7 @@ and the `unpack` function will raise a `UsageError` if it is unable to find a
 For convenience/use in annotations, a `SerializableType` is exported which
 includes the above type information.
 
-Full documentation can be found in
+Additional documentation can be found in
 [dox.md](https://github.com/k98kurz/packify/blob/master/dox.md), which was
 generated automagically by [autodox](https://pypi.org/project/autodox).
 
