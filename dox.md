@@ -30,7 +30,11 @@ serializable.
 ### `unpack(data: bytes, inject: dict = {}) -> SerializableType:`
 
 Deserializes an instance of a Packable implementation or built-in type,
-recursively calling itself as necessary.
+recursively calling itself as necessary. Raises UsageError if a required
+dependency class is not found in globals or inject (i.e. when unpacking a
+Packable implementation).
+
+### `version() -> str:`
 
 ## Values
 
