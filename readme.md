@@ -158,6 +158,13 @@ Additional documentation can be found in
 [dox.md](https://github.com/k98kurz/packify/blob/master/dox.md), which was
 generated automagically by [autodox](https://pypi.org/project/autodox).
 
+## More Resources
+
+Check out the [Pycelium discord server](https://discord.gg/b2QFEJDX69). If you
+experience a problem, please discuss it on the Discord server. All suggestions
+for improvement are also welcome, and the best place for that is also Discord.
+If you experience a bug and do not use Discord, open an issue on Github.
+
 ## Tests
 
 Since it is a focused package, there are only 11 tests, and they are mostly e2e
