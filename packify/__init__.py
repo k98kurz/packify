@@ -3,10 +3,11 @@ from .interface import Packable
 from .serialization import pack, unpack, SerializableType
 
 
-__version__ = '0.3.0-dev'
+__version__ = '0.3.0'
 
 
 def version() -> str:
+    """Returns the current version of the packify package."""
     return __version__
 
 

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "packify"
-version = "0.3.0-dev"
+version = "0.3.0"
 authors = [
   { name="k98kurz", email="k98kurz@gmail.com" },
 ]
@@ -12,7 +12,7 @@ description = "Serialize and deserialize almost anything easily."
 readme = "readme.md"
 requires-python = ">=3.9"
 classifiers = [
-  "Development Status :: 3 - Alpha",
+  "Development Status :: 4 - Beta",
   "Programming Language :: Python :: 3",
   "License :: OSI Approved :: ISC License (ISCL)",
   "Operating System :: OS Independent",
