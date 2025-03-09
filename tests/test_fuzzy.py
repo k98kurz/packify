@@ -8,21 +8,21 @@ import unittest
 
 
 @dataclass
-class StrWrapper:
-    data: str = field()
+class Wrapper:
+    data: str|bytes|bytearray|int|float|Decimal|bool|None = field()
 
     def __eq__(self, other) -> bool:
         return type(self) is type(other) and self.data == other.data
 
     def __hash__(self) -> int:
-        return hash(("StrWrapper", self.data))
+        return hash(("Wrapper", self.data))
 
     def pack(self) -> bytes:
-        return bytes(self.data, 'utf-8')
+        return pack(self.data)
 
     @classmethod
-    def unpack(cls, data: bytes, /, *, inject: dict = {}) -> StrWrapper:
-        return cls(str(data, 'utf-8'))
+    def unpack(cls, data: bytes, /, *, inject: dict = {}) -> Wrapper:
+        return cls(unpack(data, inject=inject))
 
 
 class PackableMapEntry:
@@ -78,42 +78,12 @@ class PackableMapEntry:
 
 class FuzzTest(unittest.TestCase):
     inject = {
-        "StrWrapper": StrWrapper,
+        "Wrapper": Wrapper,
         "PackableMapEntry": PackableMapEntry,
     }
 
-    def generate_basic_type(self) -> SerializableType:
-        t = random.choice([int, float, str, bytes])
-        if t is int:
-            return random.randint(-1000000, 1000000)
-        elif t is float:
-            return random.uniform(-1000000, 1000000)
-        elif t is str:
-            return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(random.randint(1, 100)))
-        elif t is bytes:
-            return bytes(random.randint(0, 255) for _ in range(random.randint(1, 100)))
-        elif t is bool:
-            return random.choice([True, False])
-        elif t is Decimal:
-            return Decimal(random.uniform(-1000000, 1000000))
-
-    def generate_non_container(self) -> SerializableType:
-        t = random.choice([PackableMapEntry, StrWrapper, 'other'])
-        if t is PackableMapEntry:
-            return PackableMapEntry(
-                StrWrapper(''.join(random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(random.randint(1, 100)))),
-                StrWrapper(''.join(random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(random.randint(1, 100)))),
-            )
-        elif t is StrWrapper:
-            return StrWrapper(''.join(random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(random.randint(1, 100))))
-        else:
-            return self.generate_basic_type()
-
-    def generate_vector(self, recursive_limit: int = 3) -> SerializableType:
-        if recursive_limit <= 0:
-            return self.generate_non_container()
-        size_limit = 66 // recursive_limit
-        t = random.choice([int, float, str, bytes, bool, Decimal, dict, list, set, tuple, PackableMapEntry, StrWrapper])
+    def generate_basic_type(self, size_limit: int = 10_000) -> SerializableType:
+        t = random.choice([int, float, str, bytes, bool, Decimal])
         if t is int:
             return random.randint(-1000000, 1000000)
         elif t is float:
@@ -126,25 +96,83 @@ class FuzzTest(unittest.TestCase):
             return random.choice([True, False])
         elif t is Decimal:
             return Decimal(random.uniform(-1000000, 1000000))
-        elif t is dict:
-            return {self.generate_non_container(): self.generate_vector(recursive_limit - 1) for _ in range(random.randint(1, size_limit))}
-        elif t is list:
-            return [self.generate_vector(recursive_limit - 1) for _ in range(random.randint(1, size_limit))]
+
+    def generate_non_container(self, size_limit: int = 10_000) -> SerializableType:
+        t = random.choice([PackableMapEntry, Wrapper, 'basic'])
+        if t is PackableMapEntry:
+            return PackableMapEntry(
+                Wrapper(self.generate_basic_type(size_limit)),
+                Wrapper(self.generate_basic_type(size_limit)),
+            )
+        elif t is Wrapper:
+            return Wrapper(self.generate_basic_type(size_limit))
+        else:
+            return self.generate_basic_type(size_limit)
+
+    def generate_vector(self, recursive_limit: int = 2) -> SerializableType:
+        if recursive_limit <= 0:
+            return self.generate_non_container()
+        size_limit = 10_000 // recursive_limit
+        count_limit = 100 // recursive_limit
+        t = random.choice(['basic', 'recursive', set, PackableMapEntry, Wrapper])
+        if t == 'basic':
+            return self.generate_basic_type(size_limit)
+        elif t == 'recursive':
+            return self.generate_recursive_vector(recursive_limit - 1)
         elif t is set:
-            return set(self.generate_non_container() for _ in range(random.randint(1, size_limit)))
-        elif t is tuple:
-            return tuple(self.generate_vector(recursive_limit - 1) for _ in range(random.randint(1, size_limit)))
+            return set(self.generate_non_container(size_limit) for _ in range(random.randint(1, count_limit)))
         elif t is PackableMapEntry:
             return PackableMapEntry(
-                StrWrapper(''.join(random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(random.randint(1, size_limit)))),
-                StrWrapper(''.join(random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(random.randint(1, size_limit)))),
+                Wrapper(self.generate_basic_type(size_limit)),
+                Wrapper(self.generate_basic_type(size_limit)),
             )
-        elif t is StrWrapper:
-            return StrWrapper(''.join(random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(random.randint(1, size_limit))))
+        elif t is Wrapper:
+            return Wrapper(self.generate_basic_type(size_limit))
 
-    def test_fuzz(self):
-        for _ in range(1000):
+    def generate_recursive_vector(self, recursive_limit: int = 2) -> SerializableType:
+        if recursive_limit <= 0:
+            return self.generate_non_container()
+        size_limit = 10_000 // recursive_limit
+        count_limit = 150 // recursive_limit
+        t = random.choice([dict, list, tuple])
+        if t is dict:
+            return {
+                self.generate_non_container(size_limit): (
+                    self.generate_recursive_vector(recursive_limit - 1)
+                    if random.random() < 0.5
+                    else self.generate_vector(recursive_limit - 1)
+                )
+                for _ in range(random.randint(1, count_limit))
+            }
+        elif t is list:
+            return [
+                self.generate_recursive_vector(recursive_limit - 1)
+                if random.random() < 0.5
+                else self.generate_vector(recursive_limit - 1)
+                for _ in range(random.randint(1, count_limit))
+            ]
+        elif t is tuple:
+            return tuple(
+                self.generate_recursive_vector(recursive_limit - 1)
+                if random.random() < 0.5
+                else self.generate_vector(recursive_limit - 1)
+                for _ in range(random.randint(1, count_limit))
+            )
+
+    def test_wide(self):
+        for i in range(1000):
+            if i % 100 == 0:
+                print(f'Wide fuzz testing {i}/1000...')
             vector = self.generate_vector()
+            packed = pack(vector)
+            unpacked = unpack(packed, inject=self.inject)
+            assert vector == unpacked, (vector, unpacked)
+
+    def test_deep(self):
+        for i in range(1000):
+            if i % 100 == 0:
+                print(f'Deep fuzz testing {i}/1000...')
+            vector = self.generate_recursive_vector(recursive_limit=100)
             packed = pack(vector)
             unpacked = unpack(packed, inject=self.inject)
             assert vector == unpacked, (vector, unpacked)
