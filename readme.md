@@ -65,6 +65,30 @@ The following types are supported:
 - set
 - dict
 
+<details>
+<summary>Using with named tuples</summary>
+
+If you want to use named tuples, you can do so by packing as a regular tuple and
+then unpacking it into the named tuple class.
+
+```python
+from packify import pack, unpack
+from collections import namedtuple
+
+Point = namedtuple('Point', ['x', 'y'])
+
+original = Point(1, 2)
+packed = pack(tuple(original))
+unpacked = Point(*unpack(packed))
+assert unpacked == original
+```
+
+The recursive features of `pack` and `unpack` will not work with named tuples
+nested within data structures. Using a `Packable` implementation is a better
+approach if you need custom data types nested within data structures (see below).
+</details>
+<br>
+
 Additionally, a simple duck-type interface/protocol, `Packable`, is included.
 Any more complex data structure can be handled if it implements the `Packable`
 interface. `Packable` is defined as follows:
@@ -85,7 +109,10 @@ class Packable(Protocol):
 ```
 
 If a class that implements `Packable` is used, then it needs to be included in
-the `inject` parameter for calls to `unpack`. For example:
+the `inject` parameter for calls to `unpack`.
+
+<details>
+<summary>Example</summary>
 
 ```python
 from dataclasses import dataclass, field
@@ -113,24 +140,12 @@ assert unpacked == thing
 unpacked = unpack(packed, inject={**globals()})
 assert unpacked == thing
 ```
+</details>
+<br>
 
 As long as the class implements the `Packable` protocol, it can be included in
 lists, sets, tuples, and dicts (assuming it is hashable for set or to be used as
 a dict key), and it will just work.
-
-Technically, monkey-patching is also possible:
-
-```python
-import packify
-packify.SomeClass = SomeClass
-
-packed = packify.pack(SomeClass())
-unpacked = packify.unpack(packed)
-```
-
-This is not encouraged, but it is possible if you do not want to pass `inject`
-parameters. (Code should be easier to test when using the `inject` parameter
-instead of monkey-patching.)
 
 The `pack` function will raise a `UsageError` if the data is not serializable,
 and the `unpack` function will raise a `UsageError` if it is unable to find a
@@ -145,22 +160,24 @@ generated automagically by [autodox](https://pypi.org/project/autodox).
 
 ## Tests
 
-Since it is a simple package, there are only 9 tests, and they are mostly e2e
+Since it is a focused package, there are only 11 tests, and they are mostly e2e
 tests of both the `pack` and `unpack` functions. After using this for a year, I
-found an edge case, and there is a test to prove it has been fixed. To run the
-tests, clone the repository and use the following:
+found an edge case, and there is a test to prove it has been fixed. I also added
+2 fuzz tests to broaden the coverage of the test suite during a major refactor.
+To run the tests, clone the repository and use the following:
 
 ```bash
 python tests/test_serialization.py
+python tests/test_fuzzy.py
 ```
 
 ## License
 
-Copyleft (c) 2023, 2024 k98kurz
+Copyright (c) 2023, 2024, 2025 Jonathan Voss (k98kurz)
 
 Permission to use, copy, modify, and/or distribute this software
 for any purpose with or without fee is hereby granted, provided
-that the above copyleft notice and this permission notice appear in
+that the above copyright notice and this permission notice appear in
 all copies.
 
 THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL
