@@ -37,7 +37,7 @@ from packify import ...
 - Platform/device: [e.g. desktop or specific phone model]
 - OS: [e.g. Ubuntu]
 - Python Version: [e.g. 3.10]
-- Packify Version: [e.g. 0.2.3]
+- Packify Version: [e.g. 0.3.1]
 
 ### Additional context
 
