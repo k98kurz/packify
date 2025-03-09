@@ -1,5 +1,7 @@
 class UsageError(BaseException):
-    """Used with tressa as a replacement for assert and AssertionError."""
+    """Raised when a condition for proper usage of packify is not met.
+        Used with tressa as a replacement for assert and AssertionError.
+    """
     ...
 
 
