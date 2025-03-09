@@ -12,7 +12,9 @@ SerializableType = Packable|dict|list|set|tuple|int|bool|float|Decimal|str|bytes
 
 
 class LengthCategory(IntEnum):
-    """Represents the 2 highest bits of a code."""
+    """Represents the 2 highest bits of a code, controlling how the
+        length of a value is encoded.
+    """
     CAT0 = 0 << 6       # 00xxxxxx
     CAT1 = 1 << 6       # 01xxxxxx
     CAT2 = 2 << 6       # 10xxxxxx
@@ -31,6 +33,9 @@ class LengthCategory(IntEnum):
         }[self]
 
     def fmt_count(self) -> int:
+        """Returns the number of bytes required to encode a length of this
+            category.
+        """
         return {
             LengthCategory.CAT0: 0,
             LengthCategory.CAT1: 1,
@@ -40,6 +45,12 @@ class LengthCategory(IntEnum):
 
     @staticmethod
     def for_len(n: int) -> LengthCategory:
+        """Returns the appropriate length category for a given length.
+            For ints, the length is the number of bytes required to
+            encode the int; if the int is larger than 2^32-1, the number
+            of bytes required to encode the int will be explicitly
+            encoded in its own byte.
+        """
         if n < 2**8:
             return LengthCategory.CAT1
         elif n < 2**16:
@@ -51,6 +62,7 @@ class LengthCategory(IntEnum):
 
 
 class EncodedType(IntEnum):
+    """Represents the 6 lowest bits of a code, encoding the type of a value."""
     NONE      = 0
     BYTES     = 1
     BYTEARRAY = 2
@@ -242,6 +254,8 @@ def pack(data: SerializableType) -> bytes:
 def unpack(data: bytes, inject: dict = {}) -> SerializableType:
     """Deserializes an instance of a Packable implementation
         or built-in type, recursively calling itself as necessary.
+        Raises UsageError if a required dependency class is not found in
+        globals or inject (i.e. when unpacking a Packable implementation).
     """
     code, data = struct.unpack(f'!B{len(data)-1}s', data)
     dependencies = {**globals(), **inject}
