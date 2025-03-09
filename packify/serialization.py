@@ -12,12 +12,17 @@ SerializableType = Packable|dict|list|set|tuple|int|bool|float|Decimal|str|bytes
 
 
 class LengthCategory(IntEnum):
+    """Represents the 2 highest bits of a code."""
     CAT0 = 0 << 6       # 00xxxxxx
     CAT1 = 1 << 6       # 01xxxxxx
     CAT2 = 2 << 6       # 10xxxxxx
     CAT3 = 3 << 6       # 11xxxxxx
 
     def fmt(self) -> str:
+        """Returns the format string character to use for encoding a
+            length of this category. CAT0 is a special category used for
+            ints too large to fit into a uint32.
+        """
         return {
             LengthCategory.CAT0: 'x',
             LengthCategory.CAT1: 'B',
@@ -51,9 +56,10 @@ class EncodedType(IntEnum):
     BYTEARRAY = 2
     STR       = 3
     INT       = 4
-    BOOL      = 5
-    FLOAT     = 6
-    DECIMAL   = 7
+    NEG_INT   = 5
+    BOOL      = 6
+    FLOAT     = 7
+    DECIMAL   = 8
     LIST      = 10
     SET       = 11
     TUPLE     = 12
@@ -153,8 +159,14 @@ def pack(data: SerializableType) -> bytes:
         )
 
     if type(data) is int:
-        category = LengthCategory.for_len(data)
-        code = category.value | EncodedType.INT
+        if data < 0:
+            category = LengthCategory.for_len(-data)
+            code = category.value | EncodedType.NEG_INT
+        else:
+            category = LengthCategory.for_len(data)
+            code = category.value | EncodedType.INT
+
+        data = data if data >= 0 else -data
 
         if category == LengthCategory.CAT0:
             size = ceil(log(data, 2)/8)
@@ -294,15 +306,18 @@ def unpack(data: bytes, inject: dict = {}) -> SerializableType:
         s, _ = struct.unpack(f'!{s_len}s{len(data)-s_len}s', data)
         return str(s, 'utf-8')
 
-    if encoded_type == EncodedType.INT:
+    if encoded_type in (EncodedType.INT, EncodedType.NEG_INT):
         if category == LengthCategory.CAT0:
             size, data = struct.unpack(f'!B{len(data)-1}s', data)
             data, _ = struct.unpack(f'!{size}s{len(data)-size}s', data)
-            return int.from_bytes(data, 'big')
+            result = int.from_bytes(data, 'big')
         else:
-            return struct.unpack(
+            result = struct.unpack(
                 f'!{category.fmt()}{len(data)-category.fmt_count()}s', data
             )[0]
+        if encoded_type == EncodedType.NEG_INT:
+            result = -result
+        return result
 
     if encoded_type == EncodedType.BOOL:
         return struct.unpack(f'!?', data)[0]

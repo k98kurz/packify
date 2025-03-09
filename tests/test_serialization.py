@@ -1,7 +1,8 @@
 from __future__ import annotations
-from context import pack, unpack, Packable, UsageError
+from context import pack, unpack, Packable, UsageError, SerializableType
 from dataclasses import dataclass, field
 from decimal import Decimal
+import random
 import struct
 import unittest
 
@@ -248,6 +249,53 @@ class TestReportedEdgeCases(unittest.TestCase):
         packed = pack(test_vector)
         unpacked = unpack(packed)
         assert test_vector == unpacked
+
+
+class FuzzTest(unittest.TestCase):
+    def generate_basic_type(self) -> SerializableType:
+        t = random.choice([int, float, str, bytes])
+        if t is int:
+            return random.randint(-1000000, 1000000)
+        elif t is float:
+            return random.uniform(-1000000, 1000000)
+        elif t is str:
+            return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(random.randint(1, 100)))
+        elif t is bytes:
+            return bytes(random.randint(0, 255) for _ in range(random.randint(1, 100)))
+        elif t is bool:
+            return random.choice([True, False])
+        elif t is Decimal:
+            return Decimal(random.uniform(-1000000, 1000000))
+
+    def generate_vector(self) -> SerializableType:
+        t = random.choice([int, float, str, bytes, bool, Decimal, dict, list, set, tuple])
+        if t is int:
+            return random.randint(-1000000, 1000000)
+        elif t is float:
+            return random.uniform(-1000000, 1000000)
+        elif t is str:
+            return ''.join(random.choice('abcdefghijklmnopqrstuvwxyz') for _ in range(random.randint(1, 100)))
+        elif t is bytes:
+            return bytes(random.randint(0, 255) for _ in range(random.randint(1, 100)))
+        elif t is bool:
+            return random.choice([True, False])
+        elif t is Decimal:
+            return Decimal(random.uniform(-1000000, 1000000))
+        elif t is dict:
+            return {self.generate_basic_type(): self.generate_basic_type() for _ in range(random.randint(1, 100))}
+        elif t is list:
+            return [self.generate_basic_type() for _ in range(random.randint(1, 100))]
+        elif t is set:
+            return set(self.generate_basic_type() for _ in range(random.randint(1, 100)))
+        elif t is tuple:
+            return tuple(self.generate_basic_type() for _ in range(random.randint(1, 100)))
+
+    def test_fuzz(self):
+        for _ in range(1000):
+            vector = self.generate_vector()
+            packed = pack(vector)
+            unpacked = unpack(packed)
+            assert vector == unpacked, (vector, unpacked)
 
 
 if __name__ == '__main__':
