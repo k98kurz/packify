@@ -9,7 +9,7 @@ class Packable(Protocol):
         ...
 
     @classmethod
-    def unpack(cls, data: bytes, /, *, inject: dict = {}) -> Packable:
+    def unpack(cls, data: bytes, inject: dict = {}) -> Packable:
         """Unpacks an instance from bytes. Must accept dependency
             injection to unpack other Packable types.
         """

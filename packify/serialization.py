@@ -258,7 +258,8 @@ def unpack(data: bytes, inject: dict = {}) -> SerializableType:
         globals or inject (i.e. when unpacking a Packable implementation).
     """
     code, data = struct.unpack(f'!B{len(data)-1}s', data)
-    dependencies = {**globals(), **inject}
+    dependencies = dict(globals())
+    dependencies.update(inject)
 
     category, encoded_type = decode(code)
 

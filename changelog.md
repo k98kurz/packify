@@ -1,3 +1,7 @@
+## 0.3.2
+
+- Small syntax update for micropython compatibility
+
 ## 0.3.1
 
 - Bug fix: empty lists, tuples, sets, and dicts are now packed and unpacked

@@ -3,7 +3,7 @@ from .interface import Packable
 from .serialization import pack, unpack, SerializableType
 
 
-__version__ = '0.3.1'
+__version__ = '0.3.2-dev'
 
 
 def version() -> str:
