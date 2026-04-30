@@ -1,3 +1,8 @@
+## 0.3.3
+
+- Added proper Agent Skills frontmatter to SKILL.md with optimized description
+  for better trigger reliability
+
 ## 0.3.2
 
 - Bug fix: set serialization is now consistent and deterministic between
