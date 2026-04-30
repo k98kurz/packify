@@ -1,5 +1,6 @@
 ## 0.3.2
 
+- Bug fix: set serialization is now consistent and deterministic between installations
 - Small syntax update for micropython compatibility
 
 ## 0.3.1

@@ -90,7 +90,9 @@ def decode(code: int) -> tuple[LengthCategory, EncodedType]:
 def pack(data: SerializableType) -> bytes:
     """Serializes an instance of a Packable implementation or built-in
         type, recursively calling itself as necessary. Raises UsageError
-        if the type is not serializable.
+        if the type is not serializable. Dicts and sets are sorted for
+        deterministic serialized format that is consistent between
+        environments (e.g. Python versions).
     """
     tressa(isinstance(data, Packable) or \
         type(data) in (dict, list, set, tuple, str, bytes, bytearray, int,
@@ -118,6 +120,7 @@ def pack(data: SerializableType) -> bytes:
 
     if type(data) in (list, set, tuple):
         items = [pack(item) for item in data]
+        items = sorted(items) if type(data) is set else items
         count = len(items)
         item_lens = [len(item) for item in items]
         category = LengthCategory.for_len(count)

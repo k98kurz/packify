@@ -15,7 +15,7 @@ as a replacement for assert and AssertionError.
 
 Packs the instance into bytes.
 
-##### `@classmethod unpack(data: bytes, /, *, inject: dict = {}) -> Packable:`
+##### `@classmethod unpack(data: bytes, inject: dict = {}) -> Packable:`
 
 Unpacks an instance from bytes. Must accept dependency injection to unpack other
 Packable types.
@@ -26,7 +26,8 @@ Packable types.
 
 Serializes an instance of a Packable implementation or built-in type,
 recursively calling itself as necessary. Raises UsageError if the type is not
-serializable.
+serializable. Dicts and sets are sorted for deterministic serialized format that
+is consistent between environments (e.g. Python versions).
 
 ### `unpack(data: bytes, inject: dict = {}) -> SerializableType:`
 
