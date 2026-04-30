@@ -14,9 +14,11 @@ assignees: k98kurz
 Once all other issues are complete, prepare to release the next version.
 
 - [ ] Review and update docstrings
-- [ ] Update dox.md
-- [ ] Update readme.md
-- [ ] Update changelog.md
+- [ ] Update documentation:
+  - dox.md
+  - readme.md
+  - changelog.md
+  - SKILL.md
 - [ ] Review and finalize documentation
 - [ ] Ensure version strings are set to `'M.m.p'`
 - [ ] Close milestone on GitHub

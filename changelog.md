@@ -1,7 +1,10 @@
 ## 0.3.2
 
-- Bug fix: set serialization is now consistent and deterministic between installations
+- Bug fix: set serialization is now consistent and deterministic between
+  installations
 - Small syntax update for micropython compatibility
+- Added CLI for exporting agent skill to AI coding environments (generic,
+  OpenCode, Claude Code, Cursor, Codex): `packify [skill|opencode|claude|cursor|codex]`
 
 ## 0.3.1
 

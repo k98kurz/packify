@@ -164,6 +164,28 @@ Additional documentation can be found in
 [dox.md](https://github.com/k98kurz/packify/blob/master/dox.md), which was
 generated automagically by [autodox](https://pypi.org/project/autodox).
 
+## CLI
+
+The `packify` package includes a CLI for exporting the agent skill to various AI
+coding environments:
+
+```bash
+# Print skill to stdout
+packify skill
+
+# Save skill to a specific directory
+packify skill --output path/to/skills
+
+# Install skill for specific AI tools
+packify opencode   # .opencode/skills/packify/SKILL.md
+packify claude     # .claude/skills/packify/SKILL.md
+packify cursor     # .cursor/skills/packify/SKILL.md
+packify codex      # .agents/skills/packify/SKILL.md
+```
+
+This makes the packify skill available to AI agents so they can understand and
+use the library effectively.
+
 ## More Resources
 
 Check out the [Pycelium discord server](https://discord.gg/b2QFEJDX69). If you
@@ -185,7 +207,7 @@ python tests/test_fuzzy.py
 
 ## License
 
-Copyright (c) 2023, 2024, 2025 Jonathan Voss (k98kurz)
+Copyright (c) 2026 Jonathan Voss (k98kurz)
 
 Permission to use, copy, modify, and/or distribute this software
 for any purpose with or without fee is hereby granted, provided

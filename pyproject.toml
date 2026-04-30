@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "packify"
-version = "0.3.2-dev"
+version = "0.3.2"
 authors = [
   { name="k98kurz", email="k98kurz@gmail.com" },
 ]
@@ -19,6 +19,22 @@ classifiers = [
   "Topic :: Software Development :: Libraries",
 ]
 
+[project.scripts]
+packify = "packify.cli:main"
+
 [project.urls]
-"Homepage" = "https://github.com/k98kurz/packify"
+"Homepage" = "https://pycelium.com"
+"Repository" = "https://github.com/k98kurz/packify"
 "Bug Tracker" = "https://github.com/k98kurz/packify/issues"
+
+[tool.hatch.build.targets.wheel]
+exclude = [
+  "/tests",
+  ".github",
+]
+
+[tool.hatch.build.targets.sdist]
+exclude = [
+  "/tests",
+  ".github",
+]
