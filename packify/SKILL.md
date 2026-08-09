@@ -31,6 +31,23 @@ Built-in: `int`, `bool`, `float`, `Decimal`, `str`, `bytes`, `bytearray`, `NoneT
 
 All types can be nested arbitrarily.
 
+### Named Tuples
+
+Convert named tuples to/from regular tuples:
+
+```python
+from collections import namedtuple
+import packify
+
+Point = namedtuple('Point', ['x', 'y'])
+
+original = Point(1, 2)
+packed = packify.pack(tuple(original))
+unpacked = Point(*packify.unpack(packed))
+```
+
+**Note**: Recursive serialization doesn't support named tuples nested within other data structures. For custom types in nested structures, use the `Packable` protocol instead.
+
 ## Custom Types
 
 Implement the `Packable` protocol:

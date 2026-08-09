@@ -1,3 +1,7 @@
+## 0.3.4 (WIP)
+
+- Improved agent skill to include namedtuple example
+
 ## 0.3.3
 
 - Added proper Agent Skills frontmatter to SKILL.md with optimized description
