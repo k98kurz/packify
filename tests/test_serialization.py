@@ -220,6 +220,10 @@ class TestSerialization(unittest.TestCase):
             pack(lambda: None)
         assert "<class 'function'> is not serializable" in str(e.exception)
 
+    def test_pack_big_ints_not_supported(self):
+        with self.assertRaises(UsageError):
+            pack(2**2040)
+
 
 class TestReportedBugs(unittest.TestCase):
     def test_pack_and_unpack_specific_dict(self):
@@ -272,6 +276,55 @@ class TestReportedBugs(unittest.TestCase):
         packed = pack(test_vector)
         unpacked = unpack(packed)
         assert test_vector == unpacked
+
+    def test_pack_exact_powers_of_256_round_trip(self):
+        """`pack` must round-trip ints with absolute value a power of
+            256 with exponent of at least 4. The CAT0 branch in `pack`
+            computed `size = ceil(log(data, 2)/8)`, which
+            under-allocated by one byte for these values, so
+            `int.to_bytes(size, 'big')` raised `OverflowError`.
+        """
+        failures = []
+        for exp in range(10):
+            for sign in (1, -1):
+                value = sign * (256 ** exp)
+                try:
+                    packed = pack(value)
+                    unpacked = unpack(packed)
+                    if unpacked != value:
+                        failures.append(
+                            f'round-trip mismatch for sign={sign} '
+                            f'256**{exp}: got {unpacked}, want {value} '
+                            f'(packed hex: {packed.hex()})'
+                        )
+                except Exception as e:
+                    failures.append(
+                        f'{type(e).__name__} for sign={sign} 256**{exp}: '
+                        f'{e} '
+                    )
+        assert len(failures) == 0, failures
+
+    def test_pack_one_less_than_power_of_256_does_not_overallocate(self):
+        failures = []
+        for exp in range(4, 10):
+            value = (256 ** exp)
+            under = value - 1
+            value_packed = pack(value)
+            under_packed = pack(under)
+            under_unpacked = unpack(under_packed)
+            if under_unpacked != under:
+                failures.append(
+                    f"failure for 256**{exp}-1: "
+                    f"{under_unpacked} != {under}"
+                )
+
+            if len(under_packed) >= len(value_packed):
+                failures.append(
+                    f"failure for 256**{exp}-1: "
+                    f"{len(under_packed)=} >= {len(value_packed)}"
+                )
+
+        assert len(failures) == 0, failures
 
 
 if __name__ == '__main__':

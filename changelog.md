@@ -1,6 +1,9 @@
-## 0.3.4 (WIP)
+## 0.3.4
 
 - Improved agent skill to include namedtuple example
+- Bug fix: `pack`ing ints with absolute value a power of 256 and exponent of >3
+  caused an `OverflowError`
+- `pack` now raises `UsageError` for big ints that are too large to be serialized
 
 ## 0.3.3
 

@@ -195,7 +195,7 @@ If you experience a bug and do not use Discord, open an issue on Github.
 
 ## Tests
 
-Since it is a focused package, there are only 15 tests, and they consist of e2e
+Since it is a focused package, there are only 18 tests, and they consist of e2e
 tests of both the `pack` and `unpack` functions, a few tests covering reported
 bugs, and 2 fuzz tests to broaden the coverage of the test suite added after the
 v0.3.0 refactor. To run the tests, clone the repository and use the following:

@@ -4,11 +4,11 @@ from .interface import Packable
 from decimal import Decimal
 from enum import IntEnum
 from types import NoneType
-from math import ceil, log
 import struct
 
 
-SerializableType = Packable|dict|list|set|tuple|int|bool|float|Decimal|str|bytes|bytearray|NoneType
+SerializableType = Packable|dict|list|set|tuple|int|bool|float|Decimal|str|bytes|\
+    bytearray|NoneType
 
 
 class LengthCategory(IntEnum):
@@ -184,7 +184,8 @@ def pack(data: SerializableType) -> bytes:
         data = data if data >= 0 else -data
 
         if category == LengthCategory.CAT0:
-            size = ceil(log(data, 2)/8)
+            size = (data.bit_length() + 7) // 8
+            tressa(size < 256, "packify does not support support big ints")
             data = data.to_bytes(size, 'big')
             return struct.pack(
                 f'!BB{size}s',
