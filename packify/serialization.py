@@ -76,6 +76,8 @@ class EncodedType(IntEnum):
     SET       = 11
     TUPLE     = 12
     DICT      = 13
+    BIG_INT   = 14
+    BIG_NEG   = 15
     PACKABLE  = 20
 
 
@@ -174,7 +176,8 @@ def pack(data: SerializableType) -> bytes:
         )
 
     if type(data) is int:
-        if data < 0:
+        negative = data < 0
+        if negative:
             category = LengthCategory.for_len(-data)
             code = category.value | EncodedType.NEG_INT
         else:
@@ -185,8 +188,18 @@ def pack(data: SerializableType) -> bytes:
 
         if category == LengthCategory.CAT0:
             size = (data.bit_length() + 7) // 8
-            tressa(size < 256, "packify does not support support big ints")
             data = data.to_bytes(size, 'big')
+            if size > 255:
+                if negative:
+                    code = category.value | EncodedType.BIG_NEG
+                else:
+                    code = category.value | EncodedType.BIG_INT
+                return struct.pack(
+                    f'!BI{size}s',
+                    code,
+                    size,
+                    data
+                )
             return struct.pack(
                 f'!BB{size}s',
                 code,
@@ -283,7 +296,9 @@ def unpack(data: bytes, inject: dict = {}) -> SerializableType:
             f'{packed_class} must have unpack method')
         return dependencies[packed_class].unpack(packed_data, inject=inject)
 
-    if encoded_type in (EncodedType.LIST, EncodedType.SET, EncodedType.TUPLE, EncodedType.DICT):
+    if encoded_type in (
+            EncodedType.LIST, EncodedType.SET, EncodedType.TUPLE, EncodedType.DICT
+        ):
         item_category, count, data = struct.unpack(
             f'!B{category.fmt()}{len(data)-category.fmt_count()-1}s',
             data
@@ -335,6 +350,14 @@ def unpack(data: bytes, inject: dict = {}) -> SerializableType:
                 f'!{category.fmt()}{len(data)-category.fmt_count()}s', data
             )[0]
         if encoded_type == EncodedType.NEG_INT:
+            result = -result
+        return result
+
+    if encoded_type in (EncodedType.BIG_INT, EncodedType.BIG_NEG):
+        size, data = struct.unpack(f'!I{len(data)-4}s', data)
+        data, _ = struct.unpack(f'!{size}s{len(data)-size}s', data)
+        result = int.from_bytes(data, 'big')
+        if encoded_type == EncodedType.BIG_NEG:
             result = -result
         return result
 

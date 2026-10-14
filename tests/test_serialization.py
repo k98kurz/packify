@@ -220,9 +220,32 @@ class TestSerialization(unittest.TestCase):
             pack(lambda: None)
         assert "<class 'function'> is not serializable" in str(e.exception)
 
-    def test_pack_big_ints_not_supported(self):
-        with self.assertRaises(UsageError):
-            pack(2**2040)
+    def test_pack_big_ints_supported(self):
+        cases = [2**2040-1, 2**2040, 2**2040+1, 2**2050, 2**4096]
+        cases = [v for value in cases for v in (-value, value)]
+        for value in cases:
+            packed = pack(value)
+            unpacked = unpack(packed)
+            assert unpacked == value, (value, unpacked)
+
+        nested = [2**2050, -2**2050, (2**4096,), {'k': -2**2041}]
+        assert unpack(pack(nested)) == nested, nested
+
+    def test_big_int_wire_format(self):
+        """Ints fitting in one size byte keep the 0.3.4 wire format;
+            larger ints use `BIG_INT`/`BIG_NEG` with a 4-byte size.
+        """
+        small = 2**2040 - 1
+        packed = pack(small)
+        assert packed == b'\x04\xff' + small.to_bytes(255, 'big'), packed.hex()
+        big = 2**2040
+        packed = pack(big)
+        assert packed == (
+            b'\x0e' + (256).to_bytes(4, 'big') + big.to_bytes(256, 'big')
+        ), packed.hex()
+        assert pack(-big) == (
+            b'\x0f' + (256).to_bytes(4, 'big') + big.to_bytes(256, 'big')
+        ), pack(-big).hex()
 
 
 class TestReportedBugs(unittest.TestCase):

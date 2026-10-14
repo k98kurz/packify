@@ -85,7 +85,7 @@ class FuzzTest(unittest.TestCase):
     def generate_basic_type(self, size_limit: int = 10_000) -> SerializableType:
         t = random.choice([int, float, str, bytes, bool, Decimal])
         if t is int:
-            return random.randint(-1000000, 1000000)
+            return random.randint(-2**2041, 2**2041)
         elif t is float:
             return random.uniform(-1000000, 1000000)
         elif t is str:
@@ -94,7 +94,10 @@ class FuzzTest(unittest.TestCase):
                 for _ in range(random.randint(0, size_limit))
             )
         elif t is bytes:
-            return bytes(random.randint(0, 255) for _ in range(random.randint(0, size_limit)))
+            return bytes(
+                random.randint(0, 255)
+                for _ in range(random.randint(0, size_limit))
+            )
         elif t is bool:
             return random.choice([True, False])
         elif t is Decimal:

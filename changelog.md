@@ -1,3 +1,8 @@
+## 0.4.0 (WIP)
+
+- Added new `EncodedType.BIG_INT` and `EncodedType.BIG_NEG` for integers with
+  absolute value >= 2^2040; removed the associated `UsageError`
+
 ## 0.3.4
 
 - Improved agent skill to include namedtuple example
