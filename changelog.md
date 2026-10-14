@@ -2,6 +2,7 @@
 
 - Added new `EncodedType.BIG_INT` and `EncodedType.BIG_NEG` for integers with
   absolute value >= 2^2040; removed the associated `UsageError`
+- Corrected typo in command help text
 
 ## 0.3.4
 

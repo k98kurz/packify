@@ -2,8 +2,8 @@
 name: packify
 description: Serialize Python data structures to/from bytes for reliable storage, transmission, and API integration. Handles complex nested data, custom objects, and ensures deterministic serialization. Use when users need to save, send, or convert data — whether they mention serialization, packing, or simply need to store/transfer complex Python structures.
 metadata:
-  version: 0.3.4
-  last-updated: 2026-08-11
+  version: 0.4.0
+  last-updated: 2026-08-12
   author: "Jonathan Voss"
   library-name: "packify"
   repository: "https://github.com/k98kurz/packify"

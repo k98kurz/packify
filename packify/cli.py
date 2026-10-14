@@ -84,7 +84,7 @@ def main() -> None:
     subparsers.add_parser(
         'skill',
         parents=[skill_parser],
-        help='skill [--output path] [-O path]: Output the packify agent skill '
+        help='skill [--output path]: Output the packify agent skill '
             'to stdout or an output path',
         description=f'Output the packify agent skill'
     )
@@ -113,7 +113,7 @@ def main() -> None:
     subparsers.add_parser(
         'codex',
         parents=[skill_parser],
-        help='opencode: Install the packify agent skill compatibly with Codex',
+        help='codex: Install the packify agent skill compatibly with Codex',
         description=f'Output the packify agent skill for Codex'
     )
 
