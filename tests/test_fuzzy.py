@@ -1,5 +1,5 @@
 from __future__ import annotations
-from context import pack, unpack, Packable, SerializableType
+from packify import pack, unpack, Packable, UsageError, SerializableType
 from dataclasses import dataclass, field
 from decimal import Decimal
 import random
@@ -201,6 +201,15 @@ class FuzzTest(unittest.TestCase):
             packed = pack(vector)
             unpacked = unpack(packed, inject=self.inject)
             assert vector == unpacked, (vector, unpacked)
+
+    def test_truncated_corruptions_raise_ValueError(self):
+        """Cutting a packed value at any byte must raise `ValueError`."""
+        for i in range(100):
+            vector = self.generate_recursive_vector(recursive_limit=100)
+            packed = pack(vector)
+            cut = random.randint(0, len(packed) - 1)
+            with self.assertRaises(ValueError):
+                unpack(packed[:cut], inject=self.inject)
 
 
 if __name__ == '__main__':

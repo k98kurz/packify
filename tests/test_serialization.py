@@ -1,5 +1,5 @@
 from __future__ import annotations
-from context import pack, unpack, Packable, UsageError
+from packify import pack, unpack, Packable, UsageError
 from dataclasses import dataclass, field
 from decimal import Decimal
 import struct
@@ -216,7 +216,7 @@ class TestSerialization(unittest.TestCase):
             assert pack(vector) == packed
 
     def test_unserializable_type_raises_error(self):
-        with self.assertRaises(UsageError) as e:
+        with self.assertRaises(TypeError) as e:
             pack(lambda: None)
         assert "<class 'function'> is not serializable" in str(e.exception)
 
@@ -265,26 +265,106 @@ class TestSerialization(unittest.TestCase):
             assert pack(set(big_set)) == packed_set
             assert pack(dict(big_dict)) == packed_dict
 
-    def test_unpack_truncated_ints_raise_usage_error(self):
+    def test_unpack_truncated_ints_raise_ValueError(self):
         big = pack(2**2050)
-        with self.assertRaises(UsageError) as e:
+        with self.assertRaises(ValueError) as e:
             unpack(big[:3])
         assert 'missing size prefix and value' in str(e.exception)
         assert '(got 2 bytes)' in str(e.exception)
-        with self.assertRaises(UsageError) as e:
+        with self.assertRaises(ValueError) as e:
             unpack(big[:-10])
         assert 'value shorter than declared size' in str(e.exception)
         assert '(got 247 of 257 bytes)' in str(e.exception)
 
         cat0 = pack(2**40)
-        with self.assertRaises(UsageError) as e:
+        with self.assertRaises(ValueError) as e:
             unpack(cat0[:1])
         assert 'missing size prefix and value' in str(e.exception)
         assert '(got 0 bytes)' in str(e.exception)
-        with self.assertRaises(UsageError) as e:
+        with self.assertRaises(ValueError) as e:
             unpack(cat0[:3])
         assert 'value shorter than declared size' in str(e.exception)
         assert '(got 1 of 6 bytes)' in str(e.exception)
+
+
+class TestUnpackCorruptInputs(unittest.TestCase):
+    """Truncated or corrupt input must raise `UsageError` with a
+        descriptive message; bare `struct.error` and `ValueError` must
+        never escape `unpack`.
+    """
+    def test_truncated_inputs_raise_ValueError(self):
+        cases = [
+            ('none', None, {}),
+            ('bool', True, {}),
+            ('float', 1.5, {}),
+            ('int cat1', 200, {}),
+            ('int cat2', 300, {}),
+            ('int cat3', 70_000, {}),
+            ('int cat0', 2**40, {}),
+            ('big int', 2**2050, {}),
+            ('neg int cat1', -200, {}),
+            ('neg int cat2', -300, {}),
+            ('big neg', -(2**2050), {}),
+            ('str', 'hello world', {}),
+            ('long str cat2', 'x'*300, {}),
+            ('bytes', b'byte data', {}),
+            ('bytearray', bytearray(b'byte data'), {}),
+            ('decimal', Decimal('123.321'), {}),
+            ('empty list', [], {}),
+            ('list', [1, 'two', 3.0], {}),
+            ('large list cat2', list(range(300)), {}),
+            ('tuple', (1, 'two', 3.0), {}),
+            ('set', {1, 'two', 3.0}, {}),
+            ('empty dict', {}, {}),
+            ('dict', {'one': 1, 'two': '2'}, {}),
+            ('packable', StrWrapper('wrapped'), {'StrWrapper': StrWrapper}),
+        ]
+        for label, value, inject in cases:
+            packed = pack(value)
+            assert len(packed) > 0, label
+            for n in range(len(packed)):
+                with self.subTest(label=label, cut=n):
+                    with self.assertRaises(ValueError):
+                        unpack(packed[:n], inject=inject)
+
+    def test_corrupt_codes_raise_ValueError(self):
+        cases = [
+            (b'', 'empty input'),
+            (b'\x09\x00', 'unknown encoded type 9'),
+            (b'\x21\x00', 'unknown encoded type 33'),
+            (b'\x01\x03abc', 'cat0 bytes'),
+            (b'\x02\x03abc', 'cat0 bytearray'),
+            (b'\x03\x05hello', 'cat0 str'),
+            (b'\x08\x031.5', 'cat0 decimal'),
+            (b'\x0a\x41\x02\x01\x02\x01\x02\x01\x02\x00\x00', 'cat0 list'),
+            (b'\x14\x02\x02User\x00', 'cat0 packable'),
+        ]
+        for data, label in cases:
+            with self.subTest(label=label):
+                with self.assertRaises(ValueError):
+                    unpack(data)
+
+    def test_corrupt_containers_raise_ValueError(self):
+        cases = [
+            (b'\x4a', 'list missing item category and count'),
+            (b'\x4a\x40', 'list missing count'),
+            (b'\x4a\x40\x02', 'list missing item lengths'),
+            (b'\x4a\x00\x02\x01\x02\x01\x02\x01\x02\x00\x00',
+             'list cat0 item category'),
+            (b'\x4a\x04\x02\x01\x02\x01\x02\x01\x02\x00\x00',
+             'list invalid item category'),
+            (b'\x4a\xff\x02\x01\x02\x01\x02\x01\x02\x00\x00',
+             'list invalid item category 255'),
+            (b'\xca\x40' + b'\xff\xff\xff\xff', 'list huge count'),
+            (b'\x4a\x40\x02\xff\xff' + pack(1) + pack(2),
+             'list item lengths exceed data'),
+            (b'\x4d\x00\x01\x02x', 'dict cat0 item category'),
+            (b'\x8c\x40\x01', 'tuple cat2 count truncated'),
+        ]
+        for data, label in cases:
+            with self.subTest(label=label):
+                with self.assertRaises(ValueError):
+                    unpack(data)
 
 
 class TestReportedBugs(unittest.TestCase):

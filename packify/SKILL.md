@@ -93,14 +93,16 @@ unpacked = packify.unpack(packed, inject={'User': User})
 - **Deterministic**: Dicts/sets sorted for consistent output
 - **Type-safe**: Exact types preserved (tuple vs list, etc.)
 - **Dependency injection**: Custom types required in `inject` when unpacking
-- **Error handling**: Raises `UsageError` for invalid types/missing dependencies
+- **Error handling**: `pack` raises `TypeError` for non-serializable types;
+  `unpack` raises `ValueError` for truncated/corrupt bytes and `UsageError`
+  when a `Packable` dependency is missing
 
 ## Gotchas
 
-- `UsageError` subclasses `BaseException`, not `Exception`. `except Exception`
-  will not catch it; catch `UsageError` (or `BaseException`) explicitly.
 - Only exact built-in types are serialized recursively. Subclasses such as
-  `IntEnum`, `int`/`str` subclasses, and `namedtuple` raise `UsageError`;
+  `IntEnum`, `int`/`str` subclasses, and `namedtuple` raise `TypeError`;
   convert them (`int(v)`, `tuple(v)`) or implement `Packable`.
-- Ints up to 2**32 - 1 bytes when serialized are supported as of 0.4.0; the
-  old `UsageError` for values >= 2**2040 no longer exists.
+- Ints up to `2**32` - 1 bytes when serialized are supported as of 0.4.0; the
+  old `UsageError` for values >= `2**2040` no longer exists.
+- Truncated or corrupt input raises `ValueError` with a descriptive message
+  from `unpack`; bare `struct.error` never escapes.

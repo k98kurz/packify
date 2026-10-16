@@ -7,6 +7,10 @@
 - Corrected Python requirement to 3.10+
 - Expanded agent skill docs: documented the new big-int wire format and added
   a gotchas section
+- Hardened `unpack` against truncated and structurally corrupt input: it now
+  raises `ValueError` with descriptive messages instead of leaking bare
+  `struct.error`
+- Changed `UsageError` base from `BaseException` to `Exception`
 
 ## 0.3.4
 
