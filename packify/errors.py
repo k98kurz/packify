@@ -28,7 +28,7 @@ def mdsert(packed_class: str, dependencies: dict) -> None:
     if packed_class in dependencies:
         return
     raise MissingDependencyError(
-        f'{packed_class} not found in globals or inject; cannot unpack'
+        f'{packed_class} not found in inject; cannot unpack'
     )
 
 

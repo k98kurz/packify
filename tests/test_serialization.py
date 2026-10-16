@@ -334,15 +334,29 @@ class TestUnpackCorruptInputs(unittest.TestCase):
 
     def test_corrupt_codes_raise_ValueError(self):
         cases = [
-            (b'', 'empty input'),
-            (b'\x09\x00', 'unknown encoded type 9'),
-            (b'\x21\x00', 'unknown encoded type 33'),
-            (b'\x01\x03abc', 'cat0 bytes'),
-            (b'\x02\x03abc', 'cat0 bytearray'),
-            (b'\x03\x05hello', 'cat0 str'),
-            (b'\x08\x031.5', 'cat0 decimal'),
-            (b'\x0a\x41\x02\x01\x02\x01\x02\x01\x02\x00\x00', 'cat0 list'),
-            (b'\x14\x02\x02User\x00', 'cat0 packable'),
+            (b'', 'empty input', 'data is truncated'),
+            (b'\x09\x00', 'unknown encoded type 9', 'unknown encoded type 9'),
+            (b'\x21\x00', 'unknown encoded type 33', 'unknown encoded type 33'),
+            (b'\x01\x03abc', 'cat0 bytes', 'for BYTES'),
+            (b'\x02\x03abc', 'cat0 bytearray', 'for BYTEARRAY'),
+            (b'\x03\x05hello', 'cat0 str', 'for STR'),
+            (b'\x08\x031.5', 'cat0 decimal', 'for DECIMAL'),
+            (b'\x0a\x41\x02\x01\x02\x01\x02\x01\x02\x00\x00', 'cat0 list',
+             'for LIST'),
+            (b'\x14\x02\x02User\x00', 'cat0 packable', 'for PACKABLE'),
+        ]
+        for data, label, expected in cases:
+            with self.subTest(label=label):
+                with self.assertRaises(ValueError) as e:
+                    unpack(data)
+                assert expected in str(e.exception), \
+                    (expected, str(e.exception))
+
+    def test_corrupt_content_raises_ValueError(self):
+        cases = [
+            (b'\x43\x01\xff', 'str invalid utf-8'),
+            (b'\x48\x03abc', 'decimal not numeric'),
+            (b'\x54\x01\x01\xff\x00', 'packable invalid utf-8 name'),
         ]
         for data, label in cases:
             with self.subTest(label=label):
@@ -380,7 +394,7 @@ class TestUnpackPackableDependencyErrors(unittest.TestCase):
         packed = pack(StrWrapper('wrapped'))
         with self.assertRaises(MissingDependencyError) as e:
             unpack(packed, inject={})
-        assert 'not found in globals or inject' in str(e.exception)
+        assert 'not found in inject' in str(e.exception)
 
     def test_dependency_without_unpack_raises_InvalidDependencyError(self):
         packed = pack(StrWrapper('wrapped'))

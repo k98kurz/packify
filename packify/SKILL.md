@@ -106,3 +106,5 @@ unpacked = packify.unpack(packed, inject={'User': User})
   old `UsageError` for values >= `2**2040` no longer exists.
 - Truncated or corrupt input raises `ValueError` with a descriptive message
   from `unpack`; bare `struct.error` never escapes.
+- `unpack` resolves `Packable` dependencies only from `inject`; module
+  `globals()` are not searched.

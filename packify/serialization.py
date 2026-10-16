@@ -1,7 +1,7 @@
 from __future__ import annotations
 from .errors import mdsert, idsert, tert, vert
 from .interface import Packable
-from decimal import Decimal
+from decimal import Decimal, InvalidOperation
 from enum import IntEnum
 from types import NoneType
 import struct
@@ -9,6 +9,10 @@ import struct
 
 SerializableType = Packable|dict|list|set|tuple|int|bool|float|Decimal|str|bytes|\
     bytearray|NoneType
+
+
+_FMT = ('x', 'B', 'H', 'I')
+_FMT_COUNT = (0, 1, 2, 4)
 
 
 class LengthCategory(IntEnum):
@@ -25,23 +29,13 @@ class LengthCategory(IntEnum):
             length of this category. CAT0 is a special category used for
             ints too large to fit into a uint32.
         """
-        return {
-            LengthCategory.CAT0: 'x',
-            LengthCategory.CAT1: 'B',
-            LengthCategory.CAT2: 'H',
-            LengthCategory.CAT3: 'I'
-        }[self]
+        return _FMT[self >> 6]
 
     def fmt_count(self) -> int:
         """Returns the number of bytes required to encode a length of this
             category.
         """
-        return {
-            LengthCategory.CAT0: 0,
-            LengthCategory.CAT1: 1,
-            LengthCategory.CAT2: 2,
-            LengthCategory.CAT3: 4
-        }[self]
+        return _FMT_COUNT[self >> 6]
 
     @staticmethod
     def for_len(n: int) -> LengthCategory:
@@ -91,9 +85,47 @@ CAT0_ENCODED_TYPES = (
     EncodedType.NONE
 )
 
+
+def _mk_code_table() -> tuple[tuple[LengthCategory, EncodedType]|None, ...]:
+    """Precomputes the decode result for every possible byte code.
+        Entries are `(category, encoded_type)` for valid codes and
+        `None` for corrupt codes.
+    """
+    cat0_types = {t.value for t in CAT0_ENCODED_TYPES}
+    table = []
+    for code in range(2**8):
+        encoded_type = code & TYPE_MASK
+        if encoded_type not in ENCODED_TYPE_VALUES:
+            table.append(None)
+        elif code & LENGTH_MASK == 0 and encoded_type not in cat0_types:
+            table.append(None)
+        else:
+            table.append((
+                LengthCategory(code & LENGTH_MASK), EncodedType(encoded_type)
+            ))
+    return tuple(table)
+
+
+def _code_error(code: int) -> str:
+    """Returns a descriptive message describing why `code` is corrupt."""
+    encoded_type = code & TYPE_MASK
+    if encoded_type not in ENCODED_TYPE_VALUES:
+        return 'corrupt data: unknown encoded type ' + \
+            f'{encoded_type} (got code 0x{code:02x})'
+    return 'corrupt data: CAT0 length category is not a valid encoding ' + \
+        f'for {EncodedType(encoded_type).name} (got code 0x{code:02x})'
+
+
+_CODE_TABLE = _mk_code_table()
+
 def decode(code: int) -> tuple[LengthCategory, EncodedType]:
-    """Decodes a code into a length category and encoded type."""
-    return LengthCategory(code & LENGTH_MASK), EncodedType(code & TYPE_MASK)
+    """Decodes a code into a length category and encoded type. Raises
+        ValueError if the code is corrupt.
+    """
+    info = _CODE_TABLE[code]
+    if info is None:
+        raise ValueError(_code_error(code))
+    return info
 
 
 def pack(data: SerializableType) -> bytes:
@@ -294,16 +326,6 @@ def unpack(data: bytes, inject: dict = {}) -> SerializableType:
     vert(len(data) >= 1,
         'data is truncated; missing type code (got 0 bytes)')
     code, data = struct.unpack(f'!B{len(data)-1}s', data)
-    dependencies = dict(globals())
-    dependencies.update(inject)
-
-    vert(code & TYPE_MASK in ENCODED_TYPE_VALUES,
-        'corrupt data: unknown encoded type ' + \
-        f'{code & TYPE_MASK} (got code 0x{code:02x})')
-    vert(code & LENGTH_MASK != LengthCategory.CAT0.value or
-        code & TYPE_MASK in CAT0_ENCODED_TYPES,
-        'corrupt data: CAT0 length category is not a valid encoding ' + \
-        f'for {EncodedType(code & TYPE_MASK).name} (got code 0x{code:02x})')
     category, encoded_type = decode(code)
 
     if encoded_type == EncodedType.PACKABLE:
@@ -322,9 +344,9 @@ def unpack(data: bytes, inject: dict = {}) -> SerializableType:
             data
         )
         packed_class = str(packed_class, 'utf-8')
-        mdsert(packed_class, dependencies)
-        idsert(packed_class, dependencies[packed_class])
-        return dependencies[packed_class].unpack(packed_data, inject=inject)
+        mdsert(packed_class, inject)
+        idsert(packed_class, inject[packed_class])
+        return inject[packed_class].unpack(packed_data, inject=inject)
 
     if encoded_type in (
             EncodedType.LIST, EncodedType.SET, EncodedType.TUPLE, EncodedType.DICT
@@ -352,11 +374,12 @@ def unpack(data: bytes, inject: dict = {}) -> SerializableType:
         )
         data = item_lens[-1]
         item_lens = item_lens[:-1]
-        vert(len(data) >= sum(item_lens),
-            f'{type_name} is truncated; items need {sum(item_lens)} ' + \
+        total = sum(item_lens)
+        vert(len(data) >= total,
+            lambda: f'{type_name} is truncated; items need {total} ' + \
             f'bytes (got {len(data)} bytes)')
         items = struct.unpack(
-            '!' + ''.join([f'{il}s' for il in item_lens]) + f'{len(data)-sum(item_lens)}s',
+            '!' + ''.join([f'{il}s' for il in item_lens]) + f'{len(data)-total}s',
             data
         )
         items = items[:-1]
@@ -456,7 +479,10 @@ def unpack(data: bytes, inject: dict = {}) -> SerializableType:
             'decimal is truncated; value shorter than declared size ' + \
             f'(got {len(data)} of {s_len} bytes)')
         s, _ = struct.unpack(f'!{s_len}s{len(data)-s_len}s', data)
-        return Decimal(str(s, 'utf-8'))
+        try:
+            return Decimal(str(s, 'utf-8'))
+        except (InvalidOperation, UnicodeDecodeError) as e:
+            raise ValueError(f'corrupt decimal: {e}') from e
 
     if encoded_type == EncodedType.NONE:
         return None
