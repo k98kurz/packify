@@ -94,8 +94,8 @@ unpacked = packify.unpack(packed, inject={'User': User})
 - **Type-safe**: Exact types preserved (tuple vs list, etc.)
 - **Dependency injection**: Custom types required in `inject` when unpacking
 - **Error handling**: `pack` raises `TypeError` for non-serializable types;
-  `unpack` raises `ValueError` for truncated/corrupt bytes and `UsageError`
-  when a `Packable` dependency is missing
+  `unpack` raises `ValueError` for truncated/corrupt bytes and
+  `DependencyError` when a `Packable` dependency is missing or invalid
 
 ## Gotchas
 

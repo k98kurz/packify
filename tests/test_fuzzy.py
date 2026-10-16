@@ -1,5 +1,5 @@
 from __future__ import annotations
-from packify import pack, unpack, Packable, UsageError, SerializableType
+from packify import pack, unpack, Packable, SerializableType
 from dataclasses import dataclass, field
 from decimal import Decimal
 import random

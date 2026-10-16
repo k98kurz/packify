@@ -1,5 +1,11 @@
 from __future__ import annotations
-from packify import pack, unpack, Packable, UsageError
+from packify import (
+    pack,
+    unpack,
+    Packable,
+    MissingDependencyError,
+    InvalidDependencyError
+)
 from dataclasses import dataclass, field
 from decimal import Decimal
 import struct
@@ -288,9 +294,8 @@ class TestSerialization(unittest.TestCase):
 
 
 class TestUnpackCorruptInputs(unittest.TestCase):
-    """Truncated or corrupt input must raise `UsageError` with a
-        descriptive message; bare `struct.error` and `ValueError` must
-        never escape `unpack`.
+    """Truncated or corrupt input must raise `ValueError` with a
+        descriptive message.
     """
     def test_truncated_inputs_raise_ValueError(self):
         cases = [
@@ -365,6 +370,29 @@ class TestUnpackCorruptInputs(unittest.TestCase):
             with self.subTest(label=label):
                 with self.assertRaises(ValueError):
                     unpack(data)
+
+
+class TestUnpackPackableDependencyErrors(unittest.TestCase):
+    """Unpacking a Packable whose class is missing or invalid raises the
+        appropriate `DependencyError` subclass.
+    """
+    def test_missing_dependency_raises_MissingDependencyError(self):
+        packed = pack(StrWrapper('wrapped'))
+        with self.assertRaises(MissingDependencyError) as e:
+            unpack(packed, inject={})
+        assert 'not found in globals or inject' in str(e.exception)
+
+    def test_dependency_without_unpack_raises_InvalidDependencyError(self):
+        packed = pack(StrWrapper('wrapped'))
+        with self.assertRaises(InvalidDependencyError) as e:
+            unpack(packed, inject={'StrWrapper': object})
+        assert 'StrWrapper must have unpack method' in str(e.exception)
+
+    def test_non_class_dependency_raises_InvalidDependencyError(self):
+        packed = pack(StrWrapper('wrapped'))
+        with self.assertRaises(InvalidDependencyError) as e:
+            unpack(packed, inject={'StrWrapper': object()})
+        assert 'StrWrapper must have unpack method' in str(e.exception)
 
 
 class TestReportedBugs(unittest.TestCase):

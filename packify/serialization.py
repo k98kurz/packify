@@ -1,5 +1,5 @@
 from __future__ import annotations
-from .errors import tressa, tert, vert
+from .errors import mdsert, idsert, tert, vert
 from .interface import Packable
 from decimal import Decimal
 from enum import IntEnum
@@ -98,7 +98,7 @@ def decode(code: int) -> tuple[LengthCategory, EncodedType]:
 
 def pack(data: SerializableType) -> bytes:
     """Serializes an instance of a Packable implementation or built-in
-        type, recursively calling itself as necessary. Raises UsageError
+        type, recursively calling itself as necessary. Raises TypeError
         if the type is not serializable. Dicts and sets are sorted for
         deterministic serialized format that is consistent between
         environments (e.g. Python versions).
@@ -287,9 +287,9 @@ _unpack_container_types_dict = {
 def unpack(data: bytes, inject: dict = {}) -> SerializableType:
     """Deserializes an instance of a Packable implementation
         or built-in type, recursively calling itself as necessary.
-        Raises UsageError if a required dependency class is not found in
-        globals or inject (i.e. when unpacking a Packable implementation)
-        or if the input is truncated or corrupt.
+        Raises ValueError if the input is truncated or corrupt, or
+        DependencyError if a dependency class required to unpack a
+        Packable implementation is missing or invalid.
     """
     vert(len(data) >= 1,
         'data is truncated; missing type code (got 0 bytes)')
@@ -322,10 +322,8 @@ def unpack(data: bytes, inject: dict = {}) -> SerializableType:
             data
         )
         packed_class = str(packed_class, 'utf-8')
-        tressa(packed_class in dependencies,
-            f'{packed_class} not found in globals or inject; cannot unpack')
-        tressa(hasattr(dependencies[packed_class], 'unpack'),
-            f'{packed_class} must have unpack method')
+        mdsert(packed_class, dependencies)
+        idsert(packed_class, dependencies[packed_class])
         return dependencies[packed_class].unpack(packed_data, inject=inject)
 
     if encoded_type in (

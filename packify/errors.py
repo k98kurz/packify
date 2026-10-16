@@ -1,19 +1,44 @@
 from typing import Callable
 
 
-class UsageError(Exception):
-    """Raised when a condition for proper usage of packify is not met.
-        Used with tressa as a replacement for assert and AssertionError.
+class DependencyError(Exception):
+    """Raised when a `Packable` dependency cannot be resolved."""
+    ...
+
+
+class MissingDependencyError(DependencyError):
+    """Raised when a required `Packable` dependency is missing."""
+    ...
+
+
+class InvalidDependencyError(DependencyError):
+    """Raised when a resolved dependency lacks the required `unpack`
+        method.
     """
     ...
 
 
-def tressa(condition: bool, msg: str|Callable[[], str]) -> None:
-    """Raises a UsageError with the given error_message if the condition
-        is False. Replacement for assert statements and AssertionError.
+UsageError = DependencyError
+
+
+def mdsert(packed_class: str, dependencies: dict) -> None:
+    """Raises a `MissingDependencyError` if the `packed_class` is not
+        within the `dependencies`.
     """
-    if not condition:
-        raise UsageError(msg() if callable(msg) else msg)
+    if packed_class in dependencies:
+        return
+    raise MissingDependencyError(
+        f'{packed_class} not found in globals or inject; cannot unpack'
+    )
+
+
+def idsert(packed_class: str, resolved_class: type) -> None:
+    """Raises a `InvalidDependencyError` if the `packed_class` does not
+        have the required `unpack` method.
+    """
+    if hasattr(resolved_class, 'unpack'):
+        return
+    raise InvalidDependencyError(f'{packed_class} must have unpack method')
 
 
 def tert(condition: bool, msg: str|Callable[[], str] = 'invalid type') -> None:

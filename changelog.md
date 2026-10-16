@@ -10,7 +10,11 @@
 - Hardened `unpack` against truncated and structurally corrupt input: it now
   raises `ValueError` with descriptive messages instead of leaking bare
   `struct.error`
-- Changed `UsageError` base from `BaseException` to `Exception`
+- `pack` now raises `TypeError` for non-serializable values
+- Replaced `UsageError` with a `DependencyError` hierarchy deriving from
+  `Exception`: `MissingDependencyError` and `InvalidDependencyError`
+  distinguish a missing dependency from an invalid one, and `UsageError`
+  remains as an alias of `DependencyError`
 
 ## 0.3.4
 

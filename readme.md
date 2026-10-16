@@ -155,8 +155,8 @@ a dict key), and it will just work.
 
 The `pack` function will raise a `TypeError` if the data is not serializable,
 and the `unpack` function will raise a `ValueError` if the data is truncated or
-corrupt, or a `UsageError` if it is unable to find a `Packable` class to unpack
-the relevant item.
+corrupt, or a `DependencyError` if it is unable to find or use a `Packable`
+class to unpack the relevant item.
 
 For convenience/use in annotations, a `SerializableType` is exported which
 includes the above type information.
