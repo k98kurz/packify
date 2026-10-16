@@ -81,11 +81,27 @@ class FuzzTest(unittest.TestCase):
         "Wrapper": Wrapper,
         "PackableMapEntry": PackableMapEntry,
     }
+    int_ranges = [
+        (-2**2041, -2**2040),
+        (-2**2040+1, -2**32),
+        (-2**32+1, -2**16),
+        (-2**16+1, -2**8),
+        (-2**8+1, -1),
+        (0, 2**8-1),
+        (2**8, 2**16-1),
+        (2**16, 2**32-1),
+        (2**32, 2**2040-1),
+        (2**2040, 2**2041),
+    ]
+
+    def generate_int(self) -> int:
+        int_range = random.choice(self.int_ranges)
+        return random.randint(*int_range)
 
     def generate_basic_type(self, size_limit: int = 10_000) -> SerializableType:
         t = random.choice([int, float, str, bytes, bool, Decimal])
         if t is int:
-            return random.randint(-2**2041, 2**2041)
+            return self.generate_int()
         elif t is float:
             return random.uniform(-1000000, 1000000)
         elif t is str:

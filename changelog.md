@@ -1,8 +1,12 @@
 ## 0.4.0 (WIP)
 
 - Added new `EncodedType.BIG_INT` and `EncodedType.BIG_NEG` for integers with
-  absolute value >= 2^2040; removed the associated `UsageError`
+  absolute value >= 2^2040, using a 4-byte length prefix that caps serialized
+  ints at 2^32 - 1 bytes; removed the associated `UsageError`
 - Corrected typo in command help text
+- Corrected Python requirement to 3.10+
+- Expanded agent skill docs: documented the new big-int wire format and added
+  a gotchas section
 
 ## 0.3.4
 

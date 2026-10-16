@@ -238,6 +238,9 @@ class TestSerialization(unittest.TestCase):
         small = 2**2040 - 1
         packed = pack(small)
         assert packed == b'\x04\xff' + small.to_bytes(255, 'big'), packed.hex()
+        assert pack(-small) == (
+            b'\x05\xff' + small.to_bytes(255, 'big')
+        ), pack(-small).hex()
         big = 2**2040
         packed = pack(big)
         assert packed == (
@@ -246,6 +249,42 @@ class TestSerialization(unittest.TestCase):
         assert pack(-big) == (
             b'\x0f' + (256).to_bytes(4, 'big') + big.to_bytes(256, 'big')
         ), pack(-big).hex()
+
+    def test_big_ints_in_sets_and_dicts(self):
+        big_set = {2**2050, -2**2050, 2**2040, -(2**2040 - 1)}
+        big_dict = {
+            2**2050: -2**2050,
+            -2**2041: 2**4096,
+            2**2040: 2**2040,
+        }
+        packed_set = pack(big_set)
+        packed_dict = pack(big_dict)
+        assert unpack(packed_set) == big_set
+        assert unpack(packed_dict) == big_dict
+        for _ in range(100):
+            assert pack(set(big_set)) == packed_set
+            assert pack(dict(big_dict)) == packed_dict
+
+    def test_unpack_truncated_ints_raise_usage_error(self):
+        big = pack(2**2050)
+        with self.assertRaises(UsageError) as e:
+            unpack(big[:3])
+        assert 'missing size prefix and value' in str(e.exception)
+        assert '(got 2 bytes)' in str(e.exception)
+        with self.assertRaises(UsageError) as e:
+            unpack(big[:-10])
+        assert 'value shorter than declared size' in str(e.exception)
+        assert '(got 247 of 257 bytes)' in str(e.exception)
+
+        cat0 = pack(2**40)
+        with self.assertRaises(UsageError) as e:
+            unpack(cat0[:1])
+        assert 'missing size prefix and value' in str(e.exception)
+        assert '(got 0 bytes)' in str(e.exception)
+        with self.assertRaises(UsageError) as e:
+            unpack(cat0[:3])
+        assert 'value shorter than declared size' in str(e.exception)
+        assert '(got 1 of 6 bytes)' in str(e.exception)
 
 
 class TestReportedBugs(unittest.TestCase):

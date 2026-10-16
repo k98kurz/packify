@@ -1,9 +1,11 @@
 ---
 name: packify
-description: Serialize Python data structures to/from bytes for reliable storage, transmission, and API integration. Handles complex nested data, custom objects, and ensures deterministic serialization. Use when users need to save, send, or convert data — whether they mention serialization, packing, or simply need to store/transfer complex Python structures.
+description: Serialize Python data structures to/from bytes for reliable storage, transmission, and API integration. Handles complex nested data and custom objects with deterministic output. Use when users need to save, send, encode, decode, or convert data — whether they mention serialization, packing, or simply need to store or transfer complex Python structures.
+license: ISC
+compatibility: Requires Python 3.10+
 metadata:
-  version: 0.4.0
-  last-updated: 2026-08-12
+  version: "0.4.0"
+  last-updated: "2026-10-14"
   author: "Jonathan Voss"
   library-name: "packify"
   repository: "https://github.com/k98kurz/packify"
@@ -31,13 +33,16 @@ packed: bytes = packify.pack(data)
 data = packify.unpack(packed, inject={})  # inject provides custom types
 ```
 
-### Supported Types
+## Supported Types
 
 Built-in: `int`, `bool`, `float`, `Decimal`, `str`, `bytes`, `bytearray`, `NoneType`, `list`, `tuple`, `set`, `dict`
 
-All types can be nested arbitrarily.
+All types can be nested arbitrarily. Ints of effectively any size are supported
+(0.4.0+); values needing 256 or more bytes (absolute value >= 2**2040) use an
+extended 4-byte length prefix instead of a single size byte. That prefix caps a
+serialized integer at 2**32 - 1 bytes.
 
-### Named Tuples
+## Named Tuples
 
 Convert named tuples to/from regular tuples:
 
@@ -52,7 +57,9 @@ packed = packify.pack(tuple(original))
 unpacked = Point(*packify.unpack(packed))
 ```
 
-**Note**: Recursive serialization doesn't support named tuples nested within other data structures. For custom types in nested structures, use the `Packable` protocol instead.
+**Note**: Recursive serialization doesn't support named tuples nested within
+other data structures. For custom types in nested structures, use the `Packable`
+protocol instead.
 
 ## Custom Types
 
@@ -87,3 +94,13 @@ unpacked = packify.unpack(packed, inject={'User': User})
 - **Type-safe**: Exact types preserved (tuple vs list, etc.)
 - **Dependency injection**: Custom types required in `inject` when unpacking
 - **Error handling**: Raises `UsageError` for invalid types/missing dependencies
+
+## Gotchas
+
+- `UsageError` subclasses `BaseException`, not `Exception`. `except Exception`
+  will not catch it; catch `UsageError` (or `BaseException`) explicitly.
+- Only exact built-in types are serialized recursively. Subclasses such as
+  `IntEnum`, `int`/`str` subclasses, and `namedtuple` raise `UsageError`;
+  convert them (`int(v)`, `tuple(v)`) or implement `Packable`.
+- Ints up to 2**32 - 1 bytes when serialized are supported as of 0.4.0; the
+  old `UsageError` for values >= 2**2040 no longer exists.

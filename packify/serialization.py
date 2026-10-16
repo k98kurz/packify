@@ -46,10 +46,11 @@ class LengthCategory(IntEnum):
     @staticmethod
     def for_len(n: int) -> LengthCategory:
         """Returns the appropriate length category for a given length.
-            For ints, the length is the number of bytes required to
-            encode the int; if the int is larger than 2^32-1, the number
-            of bytes required to encode the int will be explicitly
-            encoded in its own byte.
+            For ints, `n` is the integer value itself; when it does not
+            fit in a uint32 (`CAT0`), the caller encodes the byte length
+            explicitly using a single byte, or a 4-byte prefix via
+            `EncodedType.BIG_INT`/`EncodedType.BIG_NEG` for values whose
+            byte length exceeds 255.
         """
         if n < 2**8:
             return LengthCategory.CAT1
@@ -342,7 +343,13 @@ def unpack(data: bytes, inject: dict = {}) -> SerializableType:
 
     if encoded_type in (EncodedType.INT, EncodedType.NEG_INT):
         if category == LengthCategory.CAT0:
+            tressa(len(data) >= 1,
+                'int is truncated; missing size prefix and value ' + \
+                f'(got {len(data)} bytes)')
             size, data = struct.unpack(f'!B{len(data)-1}s', data)
+            tressa(size <= len(data),
+                'int is truncated; value shorter than declared size ' + \
+                f'(got {len(data)} of {size} bytes)')
             data, _ = struct.unpack(f'!{size}s{len(data)-size}s', data)
             result = int.from_bytes(data, 'big')
         else:
@@ -354,7 +361,13 @@ def unpack(data: bytes, inject: dict = {}) -> SerializableType:
         return result
 
     if encoded_type in (EncodedType.BIG_INT, EncodedType.BIG_NEG):
+        tressa(len(data) >= 4,
+            'big int is truncated; missing size prefix and value ' + \
+            f'(got {len(data)} bytes)')
         size, data = struct.unpack(f'!I{len(data)-4}s', data)
+        tressa(size <= len(data),
+            'big int is truncated; value shorter than declared size ' + \
+            f'(got {len(data)} of {size} bytes)')
         data, _ = struct.unpack(f'!{size}s{len(data)-size}s', data)
         result = int.from_bytes(data, 'big')
         if encoded_type == EncodedType.BIG_NEG:
