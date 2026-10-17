@@ -206,6 +206,28 @@ python tests/test_serialization.py
 python tests/test_fuzzy.py
 ```
 
+## Benchmarks
+
+`scripts/benchmark.py` measures `pack` and `unpack` throughput over a
+deterministic corpus and reports the minimum and median nanoseconds per
+operation for each workload:
+
+```bash
+python scripts/benchmark.py
+```
+
+Use `--direction` to benchmark only one operation, and repeat `--rev` to
+compare revisions. Each revision's `packify` package is loaded in an isolated
+subprocess, so before and after comparisons are reproducible without touching
+the working tree:
+
+```bash
+python scripts/benchmark.py --direction both
+python scripts/benchmark.py --rev 7f20e8e --rev 434e9f7
+```
+
+Run `python scripts/benchmark.py --help` for all options.
+
 ## License
 
 Copyright (c) 2026 Jonathan Voss (k98kurz)

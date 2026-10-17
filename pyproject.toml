@@ -34,6 +34,7 @@ packify = "packify.cli:main"
 [tool.hatch.build.targets.wheel]
 exclude = [
   "/tests",
+  "/scripts",
   ".github",
   "AGENTS.md",
 ]
@@ -41,6 +42,7 @@ exclude = [
 [tool.hatch.build.targets.sdist]
 exclude = [
   "/tests",
+  "/scripts",
   ".github",
   "AGENTS.md",
 ]
