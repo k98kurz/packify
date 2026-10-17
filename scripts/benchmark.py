@@ -16,9 +16,9 @@ from pathlib import Path
 from random import Random
 from shutil import rmtree
 from statistics import median
-from subprocess import TimeoutExpired, run
+from subprocess import PIPE, TimeoutExpired, run
 from tempfile import mkdtemp
-from time import perf_counter_ns
+from time import perf_counter, perf_counter_ns
 from typing import Any, Callable
 import gc
 import os
@@ -29,6 +29,12 @@ import tarfile
 WORKING_TREE = 'working-tree'
 _SCRIPT_PATH = Path(__file__).resolve()
 _REPO_ROOT = _SCRIPT_PATH.parent.parent
+
+
+def _log(message: str) -> None:
+    """Writes a progress message to stderr and flushes it."""
+    sys.stderr.write(message + '\n')
+    sys.stderr.flush()
 
 
 class Wrapper:
@@ -143,23 +149,37 @@ def _measure(
 
 
 def _run_benchmarks(
-        direction: str, iterations: int, warmup: int, reps: int, seed: int
+        direction: str, iterations: int, warmup: int, reps: int,
+        seed: int, label: str
     ) -> dict[str, Any]:
     """Measures every corpus value in the requested direction(s)."""
+    _log(f'[{label}] building corpus (seed {seed})...')
     corpus = build_corpus(seed)
     results: dict[str, Any] = {}
     if direction in ('pack', 'both'):
+        _log(f'[{label}] measuring pack...')
+        start = perf_counter()
         results['pack'] = {}
         for name, value in corpus.items():
             results['pack'][name] = _measure(
                 lambda v=value: pack(v), iterations, warmup, reps)
+        _log(
+            f'[{label}] measured pack in '
+            f'{perf_counter() - start:.1f}s'
+        )
     if direction in ('unpack', 'both'):
+        _log(f'[{label}] measuring unpack...')
+        start = perf_counter()
         results['unpack'] = {}
         for name, value in corpus.items():
             packed = pack(value)
             results['unpack'][name] = _measure(
                 lambda p=packed: unpack(p, inject=_INJECT),
                 iterations, warmup, reps)
+        _log(
+            f'[{label}] measured unpack in '
+            f'{perf_counter() - start:.1f}s'
+        )
     return results
 
 
@@ -218,19 +238,19 @@ def _spawn_worker(
     env['PYTHONPATH'] = str(pythonpath)
     try:
         proc = run(
-            cmd, capture_output=True, text=True, env=env, timeout=300)
+            cmd, stdout=PIPE, text=True, env=env, timeout=300)
     except TimeoutExpired:
         raise SystemExit(f'benchmark worker for {label} timed out')
     if proc.returncode != 0:
         raise SystemExit(
-            f'benchmark worker for {label} failed:\n{proc.stderr}'
+            f'benchmark worker for {label} failed with exit code '
+            f'{proc.returncode}'
         )
     try:
         return loads(proc.stdout)
     except ValueError as exc:
         raise SystemExit(
-            f'benchmark worker for {label} produced invalid JSON:\n'
-            f'{exc}\nworker stderr:\n{proc.stderr}'
+            f'benchmark worker for {label} produced invalid JSON:\n{exc}'
         )
 
 
@@ -238,19 +258,27 @@ def _benchmark_revision(rev: str, args: Namespace) -> dict[str, Any]:
     """Benchmarks a single revision, cleaning up any temporary
         checkout afterwards.
     """
+    start = perf_counter()
     if rev == WORKING_TREE:
-        return _spawn_worker(WORKING_TREE, _REPO_ROOT, args)
-    path = _extract_revision(rev)
-    try:
-        return _spawn_worker(rev, path, args)
-    finally:
-        rmtree(path, ignore_errors=True)
+        _log('launching worker in working-tree...')
+        report = _spawn_worker(WORKING_TREE, _REPO_ROOT, args)
+    else:
+        _log(f'extracting revision {rev}...')
+        path = _extract_revision(rev)
+        try:
+            _log(f'launching worker for revision {rev}...')
+            report = _spawn_worker(rev, path, args)
+        finally:
+            rmtree(path, ignore_errors=True)
+    _log(f'revision {rev} finished in {perf_counter() - start:.1f}s')
+    return report
 
 
 def _worker_main(args: Namespace) -> None:
     """Measures the imported `packify` and writes JSON to stdout."""
     results = _run_benchmarks(
-        args.direction, args.iterations, args.warmup, args.reps, args.seed)
+        args.direction, args.iterations, args.warmup, args.reps, args.seed,
+        args.label)
     report = {
         'revision': args.label,
         'python': sys.version.split()[0],
@@ -365,7 +393,10 @@ def main(argv: list[str] | None = None) -> None:
         _worker_main(args)
         return
     revisions = args.rev or [WORKING_TREE]
-    reports = [_benchmark_revision(rev, args) for rev in revisions]
+    reports = []
+    for index, rev in enumerate(revisions, 1):
+        _log(f'[{index}/{len(revisions)}] preparing revision {rev}...')
+        reports.append(_benchmark_revision(rev, args))
     _print_report(reports)
     if args.json:
         Path(args.json).write_text(dumps(reports, indent=2))
