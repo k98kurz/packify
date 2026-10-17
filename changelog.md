@@ -17,9 +17,15 @@
   remains as an alias of `DependencyError`
 - `unpack` resolves `Packable` dependencies only from `inject`; module
   globals are no longer searched
+- `pack` dispatches on the exact value type via a precomputed handler
+  table and concatenates pre-serialized container items instead of
+  routing them through `struct.pack`, substantially improving
+  serialization performance (9x-50x faster in benchmarks)
+- `pack` now raises `OverflowError` when a serialized length exceeds
+  the 32-bit limit instead of leaking a bare `struct.error`
 - `unpack` raises `ValueError` for corrupt `Decimal` content and no longer
   builds dependency/error state on the success path, substantially improving
-  deserialization performance (cut elapsed time by ~50% in benchmarks)
+  deserialization performance (1.7x-2.7x faster in benchmarks)
 
 ## 0.3.4
 

@@ -6,6 +6,7 @@ from packify import (
     MissingDependencyError,
     InvalidDependencyError
 )
+from packify.serialization import LengthCategory
 from dataclasses import dataclass, field
 from decimal import Decimal
 import struct
@@ -224,7 +225,8 @@ class TestSerialization(unittest.TestCase):
     def test_unserializable_type_raises_error(self):
         with self.assertRaises(TypeError) as e:
             pack(lambda: None)
-        assert "<class 'function'> is not serializable" in str(e.exception)
+        e = str(e.exception)
+        assert "<class 'function'> is not serializable" in e, e
 
     def test_pack_big_ints_supported(self):
         cases = [2**2040-1, 2**2040, 2**2040+1, 2**2050, 2**4096]
@@ -509,6 +511,78 @@ class TestReportedBugs(unittest.TestCase):
                 )
 
         assert len(failures) == 0, failures
+
+
+class TestPackWireFormat(unittest.TestCase):
+    """Pins the exact packed bytes for representative values so that
+        refactors of `pack` cannot silently change the wire format.
+    """
+    def test_packed_bytes_are_stable(self):
+        cases = [
+            (None, '00'),
+            (True, '0601'),
+            (False, '0600'),
+            (42, '442a'),
+            (-42, '452a'),
+            (255, '44ff'),
+            (256, '840100'),
+            (65535, '84ffff'),
+            (65536, 'c400010000'),
+            (2**32, '04050100000000'),
+            (3.14, '0740091eb851eb851f'),
+            (Decimal('1.5'), '4803312e35'),
+            ('hello', '430568656c6c6f'),
+            (b'abc', '4103616263'),
+            (bytearray(b'abc'), '4203616263'),
+            ([], '4a4000'),
+            ([1, 2], '4a4002020244014402'),
+            ((), '4c4000'),
+            ((1, 2), '4c4002020244014402'),
+            (set(), '4b4000'),
+            ({2, 1}, '4b4002020244014402'),
+            ({}, '4d4000'),
+            ({'a': 1}, '4d40010a4c400203024301614401'),
+        ]
+        for value, expected in cases:
+            with self.subTest(value=value):
+                packed = pack(value)
+                assert packed.hex() == expected, (
+                    value, packed.hex(), expected
+                )
+
+    def test_long_str_uses_cat2_length_prefix(self):
+        assert pack('x' * 300) == b'\x83\x01\x2c' + b'x' * 300
+
+    def test_nested_container_wire_format(self):
+        assert pack({'k': (1, 'a')}) == bytes.fromhex(
+            '4d4001124c4002030a43016b4c400202034401430161'
+        )
+
+
+class TestPackOversizedLengths(unittest.TestCase):
+    """Serialized lengths >= 2**32 cannot fit the 32-bit length
+        prefixes; `pack` raises `OverflowError` instead of leaking a
+        confusing `struct.error`. `LengthCategory.for_len` is tested
+        directly since constructing a 4GiB value in a test is not
+        feasible.
+    """
+    def test_for_len_boundaries(self):
+        assert LengthCategory.for_len(0) is LengthCategory.CAT1
+        assert LengthCategory.for_len(2**8 - 1) is LengthCategory.CAT1
+        assert LengthCategory.for_len(2**8) is LengthCategory.CAT2
+        assert LengthCategory.for_len(2**16 - 1) is LengthCategory.CAT2
+        assert LengthCategory.for_len(2**16) is LengthCategory.CAT3
+        assert LengthCategory.for_len(2**32 - 1) is LengthCategory.CAT3
+        assert (LengthCategory.for_len(2**32 - 1, allow_cat0=True)
+            is LengthCategory.CAT3)
+        assert (LengthCategory.for_len(2**32, allow_cat0=True)
+            is LengthCategory.CAT0)
+
+    def test_for_len_raises_OverflowError_beyond_32_bits(self):
+        with self.assertRaises(OverflowError) as e:
+            LengthCategory.for_len(2**32)
+        assert 'exceeds the 32-bit limit' in str(e.exception)
+        assert str(2**32) in str(e.exception)
 
 
 if __name__ == '__main__':

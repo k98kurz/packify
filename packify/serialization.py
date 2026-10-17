@@ -1,9 +1,9 @@
 from __future__ import annotations
-from .errors import mdsert, idsert, tert, vert
+from .errors import mdsert, idsert, vert
 from .interface import Packable
 from decimal import Decimal, InvalidOperation
 from enum import IntEnum
-from types import NoneType
+from types import NoneType, MappingProxyType
 import struct
 
 
@@ -38,11 +38,13 @@ class LengthCategory(IntEnum):
         return _FMT_COUNT[self >> 6]
 
     @staticmethod
-    def for_len(n: int) -> LengthCategory:
-        """Returns the appropriate length category for a given length.
-            For ints, `n` is the integer value itself; when it does not
-            fit in a uint32 (`CAT0`), the caller encodes the byte length
-            explicitly using a single byte, or a 4-byte prefix via
+    def for_len(n: int, allow_cat0: bool = False) -> LengthCategory:
+        """Returns the appropriate length category for a given length,
+            raising `OverflowError` if `n` exceeds the 32-bit limit and
+            is not an int value. For ints (`allow_cat0=True`), `n` is
+            the integer value itself; when it does not fit in a uint32
+            (`CAT0`), the caller encodes the byte length explicitly
+            using a single byte, or a 4-byte prefix via
             `EncodedType.BIG_INT`/`EncodedType.BIG_NEG` for values whose
             byte length exceeds 255.
         """
@@ -52,8 +54,14 @@ class LengthCategory(IntEnum):
             return LengthCategory.CAT2
         elif n < 2**32:
             return LengthCategory.CAT3
-        else:
+
+        if allow_cat0:
             return LengthCategory.CAT0
+
+        raise OverflowError(
+            f'value too large to pack: length {n} exceeds the 32-bit '
+            f'limit of {2**32 - 1} bytes'
+        )
 
 
 class EncodedType(IntEnum):
@@ -106,17 +114,22 @@ def _mk_code_table() -> tuple[tuple[LengthCategory, EncodedType]|None, ...]:
     return tuple(table)
 
 
+_CODE_TABLE = _mk_code_table()
+
+
 def _code_error(code: int) -> str:
     """Returns a descriptive message describing why `code` is corrupt."""
     encoded_type = code & TYPE_MASK
     if encoded_type not in ENCODED_TYPE_VALUES:
-        return 'corrupt data: unknown encoded type ' + \
-            f'{encoded_type} (got code 0x{code:02x})'
-    return 'corrupt data: CAT0 length category is not a valid encoding ' + \
+        return (
+            f'corrupt data: unknown encoded type {encoded_type} '
+            f'(got code 0x{code:02x})'
+        )
+    return (
+        f'corrupt data: CAT0 length category is not a valid encoding '
         f'for {EncodedType(encoded_type).name} (got code 0x{code:02x})'
+    )
 
-
-_CODE_TABLE = _mk_code_table()
 
 def decode(code: int) -> tuple[LengthCategory, EncodedType]:
     """Decodes a code into a length category and encoded type. Raises
@@ -128,185 +141,194 @@ def decode(code: int) -> tuple[LengthCategory, EncodedType]:
     return info
 
 
+def _pack_len_prefixed(code: int, payload: bytes|bytearray) -> bytes:
+    """Packs `payload` behind a length prefix, OR-ing the length
+        category into the base type `code`. Raises `OverflowError` if
+        the length exceeds the 32-bit limit.
+    """
+    category = LengthCategory.for_len(len(payload))
+    fmt = f'!B{category.fmt()}'
+    return struct.pack(fmt, category.value | code, len(payload)) + payload
+
+
+def _pack_none(data: NoneType) -> bytes:
+    """Packs `None` into a single type-code byte."""
+    return struct.pack('!B', EncodedType.NONE.value)
+
+
+def _pack_bool(data: bool) -> bytes:
+    """Packs a bool into a type code and a value byte."""
+    return struct.pack('!B?', EncodedType.BOOL.value, data)
+
+
+def _pack_float(data: float) -> bytes:
+    """Packs a float into a type code and an 8-byte value."""
+    return struct.pack('!Bd', EncodedType.FLOAT.value, data)
+
+
+def _pack_str(data: str) -> bytes:
+    """Packs a str into a type code, a length prefix, and its utf-8
+        encoded bytes.
+    """
+    return _pack_len_prefixed(EncodedType.STR.value, data.encode())
+
+
+def _pack_bytes(data: bytes) -> bytes:
+    """Packs bytes into a type code, a length prefix, and the value."""
+    return _pack_len_prefixed(EncodedType.BYTES.value, data)
+
+
+def _pack_bytearray(data: bytearray) -> bytes:
+    """Packs a bytearray into a type code, a length prefix, and the
+        value.
+    """
+    return _pack_len_prefixed(EncodedType.BYTEARRAY.value, data)
+
+
+def _pack_decimal(data: Decimal) -> bytes:
+    """Packs a Decimal into a type code, a length prefix, and its
+        utf-8 encoded string representation.
+    """
+    return _pack_len_prefixed(EncodedType.DECIMAL.value, str(data).encode())
+
+
+def _pack_int(data: int) -> bytes:
+    """Packs an int into a type code and a fixed-width value, using
+        `EncodedType.NEG_INT` for negatives and `EncodedType.BIG_INT`
+        or `EncodedType.BIG_NEG` when the value needs more than 255
+        bytes.
+    """
+    negative = data < 0
+    magnitude = abs(data)
+    category = LengthCategory.for_len(magnitude, allow_cat0=True)
+
+    if category == LengthCategory.CAT0:
+        size = (magnitude.bit_length() + 7) // 8
+        payload = magnitude.to_bytes(size, 'big')
+
+        if size > 255:
+            encoded = EncodedType.BIG_NEG if negative else EncodedType.BIG_INT
+            return struct.pack('!BI', encoded.value, size) + payload
+
+        encoded = EncodedType.NEG_INT if negative else EncodedType.INT
+        return struct.pack('!BB', encoded.value, size) + payload
+
+    encoded = EncodedType.NEG_INT if negative else EncodedType.INT
+    return struct.pack(
+        '!B' + category.fmt(),
+        category.value | encoded.value,
+        magnitude
+    )
+
+
+def _pack_packed_items(code: int, items: list[bytes]) -> bytes:
+    """Packs pre-serialized items behind a header of the container
+        type `code` OR'd with the count's length category, the item
+        length category, the item count, and a table of item lengths,
+        followed by the concatenated items.
+    """
+    count = len(items)
+    category = LengthCategory.for_len(count)
+    item_lens = [len(item) for item in items]
+    item_category = LengthCategory.for_len(max(item_lens, default=0))
+    header = struct.pack(
+        f'!BB{category.fmt()}{count}{item_category.fmt()}',
+        category.value | code,
+        item_category.value,
+        count,
+        *item_lens
+    )
+    return header + b''.join(items)
+
+
+def _pack_list(data: list) -> bytes:
+    """Packs a list by serializing each item and concatenating the
+        results behind a shared header.
+    """
+    return _pack_packed_items(
+        EncodedType.LIST.value,
+        [pack(item) for item in data]
+    )
+
+
+def _pack_tuple(data: tuple) -> bytes:
+    """Packs a tuple by serializing each item and concatenating the
+        results behind a shared header.
+    """
+    return _pack_packed_items(
+        EncodedType.TUPLE.value,
+        [pack(item) for item in data]
+    )
+
+
+def _pack_set(data: set) -> bytes:
+    """Packs a set by serializing each item, sorting the packed items
+        for a deterministic serialized format, and concatenating the
+        results behind a shared header.
+    """
+    items = [pack(item) for item in data]
+    items.sort()
+    return _pack_packed_items(EncodedType.SET.value, items)
+
+
+def _pack_dict(data: dict) -> bytes:
+    """Packs a dict by packing each key/value pair as a tuple, sorting
+        the packed pairs for a deterministic serialized format, and
+        concatenating the results behind a shared header.
+    """
+    items = sorted([pack((key, value)) for key, value in data.items()])
+    return _pack_packed_items(EncodedType.DICT.value, items)
+
+
+def _pack_packable(data: Packable) -> bytes:
+    """Packs a `Packable` instance into a type code, a length category
+        shared by the name and data prefixes, the utf-8 encoded class
+        name, and the packed data.
+    """
+    name = bytes(data.__class__.__name__, 'utf-8')
+    packed = data.pack()
+    category = LengthCategory.for_len(max(len(name), len(packed)))
+    fmt = f'!B{category.fmt()}{category.fmt()}'
+    code = category.value | EncodedType.PACKABLE.value
+    return struct.pack(fmt, code, len(name), len(packed)) + name + packed
+
+
+_PACK_HANDLERS = MappingProxyType({
+    Packable: _pack_packable,
+    dict: _pack_dict,
+    list: _pack_list,
+    set: _pack_set,
+    tuple: _pack_tuple,
+    str: _pack_str,
+    bytes: _pack_bytes,
+    bytearray: _pack_bytearray,
+    int: _pack_int,
+    bool: _pack_bool,
+    float: _pack_float,
+    Decimal: _pack_decimal,
+    NoneType: _pack_none,
+})
+
+
 def pack(data: SerializableType) -> bytes:
     """Serializes an instance of a Packable implementation or built-in
         type, recursively calling itself as necessary. Raises TypeError
-        if the type is not serializable. Dicts and sets are sorted for
-        deterministic serialized format that is consistent between
-        environments (e.g. Python versions).
+        if the type is not serializable and OverflowError if a
+        serialized value would need a length prefix beyond the 32-bit
+        limit. Dicts and sets are sorted for deterministic serialized
+        format that is consistent between environments (e.g. Python
+        versions).
     """
-    tert(isinstance(data, Packable) or
-        type(data) in (
-            dict, list, set, tuple, str, bytes, bytearray, int,
-            bool, float, Decimal
-        ) or data is None,
-        'data type must be one of (Packable, list, set, tuple, ' + \
-        'str, bytes, bytearray, int, bool, float, Decimal, NoneType); ' + \
-        f'{type(data)} is not serializable')
-
+    handler = _PACK_HANDLERS.get(type(data))
+    if handler is not None:
+        return handler(data)
     if isinstance(data, Packable):
-        name = bytes(data.__class__.__name__, 'utf-8')
-        packed = data.pack()
-        category = LengthCategory.for_len(max(len(name), len(packed)))
-        code = category.value | EncodedType.PACKABLE.value
-
-        fmt = f'!B{category.fmt()}{category.fmt()}{len(name)}s{len(packed)}s'
-
-        return struct.pack(
-            fmt,
-            code,
-            len(name),
-            len(packed),
-            name,
-            packed
-        )
-
-    if type(data) in (list, set, tuple):
-        items = [pack(item) for item in data]
-        items = sorted(items) if type(data) is set else items
-        count = len(items)
-        item_lens = [len(item) for item in items]
-        category = LengthCategory.for_len(count)
-        item_category = LengthCategory.for_len(max(item_lens) if len(item_lens) > 0 else 0)
-        code = category.value | ({
-            list: EncodedType.LIST,
-            set: EncodedType.SET,
-            tuple: EncodedType.TUPLE
-        })[type(data)]
-
-        fmt = f'!BB{category.fmt()}{count}{item_category.fmt()}'
-        for il in item_lens:
-            fmt += f'{il}s'
-
-        return struct.pack(
-            fmt,
-            code,
-            item_category.value,
-            count,
-            *item_lens,
-            *items
-        )
-
-    if type(data) in (bytes, bytearray):
-        length = len(data)
-        category = LengthCategory.for_len(length)
-        code = category.value | ({
-            bytes: EncodedType.BYTES,
-            bytearray: EncodedType.BYTEARRAY
-        })[type(data)]
-
-        return struct.pack(
-            f'!B{category.fmt()}{length}s',
-            code,
-            length,
-            data
-        )
-
-    if type(data) is str:
-        data = bytes(data, 'utf-8')
-        length = len(data)
-        category = LengthCategory.for_len(length)
-        code = category.value | EncodedType.STR
-        fmt = f'!B{category.fmt()}{length}s'
-
-        return struct.pack(
-            fmt,
-            code,
-            length,
-            data
-        )
-
-    if type(data) is int:
-        negative = data < 0
-        if negative:
-            category = LengthCategory.for_len(-data)
-            code = category.value | EncodedType.NEG_INT
-        else:
-            category = LengthCategory.for_len(data)
-            code = category.value | EncodedType.INT
-
-        data = data if data >= 0 else -data
-
-        if category == LengthCategory.CAT0:
-            size = (data.bit_length() + 7) // 8
-            data = data.to_bytes(size, 'big')
-            if size > 255:
-                if negative:
-                    code = category.value | EncodedType.BIG_NEG
-                else:
-                    code = category.value | EncodedType.BIG_INT
-                return struct.pack(
-                    f'!BI{size}s',
-                    code,
-                    size,
-                    data
-                )
-            return struct.pack(
-                f'!BB{size}s',
-                code,
-                size,
-                data
-            )
-
-        return struct.pack(
-            f'!B{category.fmt()}',
-            code,
-            data
-        )
-
-    if type(data) is bool:
-        return struct.pack(
-            f'!B?',
-            EncodedType.BOOL.value,
-            data
-        )
-
-    if type(data) is float:
-        return struct.pack(
-            f'!Bd',
-            EncodedType.FLOAT.value,
-            data
-        )
-
-    if type(data) is Decimal:
-        data = bytes(str(data), 'utf-8')
-        length = len(data)
-        category = LengthCategory.for_len(length)
-        code = category.value | EncodedType.DECIMAL
-
-        return struct.pack(
-            f'!B{category.fmt()}{length}s',
-            code,
-            length,
-            data
-        )
-
-    if type(data) is dict:
-        items = sorted([
-            pack((key, value))
-            for key, value in data.items()
-        ])
-        count = len(items)
-        item_lens = [len(item) for item in items]
-        category = LengthCategory.for_len(count)
-        item_category = LengthCategory.for_len(max(item_lens) if len(item_lens) > 0 else 0)
-        code = category.value | EncodedType.DICT
-
-        fmt = f'!BB{category.fmt()}{count}{item_category.fmt()}'
-        for il in item_lens:
-            fmt += f'{il}s'
-
-        return struct.pack(
-            fmt,
-            code,
-            item_category.value,
-            count,
-            *item_lens,
-            *items
-        )
-
-    if data is None:
-        return struct.pack(f'!B', EncodedType.NONE.value)
+        return _PACK_HANDLERS[Packable](data)
+    raise TypeError(
+        'data type must be one of (' +
+        ", ".join([k.__name__ for k in _PACK_HANDLERS.keys()]) +
+        f'); {type(data)} is not serializable'
+    )
 
 
 _unpack_container_types_dict = {

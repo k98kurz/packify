@@ -93,8 +93,9 @@ unpacked = packify.unpack(packed, inject={'User': User})
 - **Deterministic**: Dicts/sets sorted for consistent output
 - **Type-safe**: Exact types preserved (tuple vs list, etc.)
 - **Dependency injection**: Custom types required in `inject` when unpacking
-- **Error handling**: `pack` raises `TypeError` for non-serializable types;
-  `unpack` raises `ValueError` for truncated/corrupt bytes and
+- **Error handling**: `pack` raises `TypeError` for non-serializable types
+  and `OverflowError` for values whose serialized length exceeds the 32-bit
+  limit; `unpack` raises `ValueError` for truncated/corrupt bytes and
   `DependencyError` when a `Packable` dependency is missing or invalid
 
 ## Gotchas
@@ -106,5 +107,7 @@ unpacked = packify.unpack(packed, inject={'User': User})
   old `UsageError` for values >= `2**2040` no longer exists.
 - Truncated or corrupt input raises `ValueError` with a descriptive message
   from `unpack`; bare `struct.error` never escapes.
+- Values whose serialized length reaches 2**32 bytes raise `OverflowError`
+  from `pack`; the 32-bit length prefixes cannot encode them.
 - `unpack` resolves `Packable` dependencies only from `inject`; module
   `globals()` are not searched.
