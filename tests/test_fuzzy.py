@@ -99,7 +99,7 @@ class FuzzTest(unittest.TestCase):
         return random.randint(*int_range)
 
     def generate_basic_type(self, size_limit: int = 10_000) -> SerializableType:
-        t = random.choice([int, float, str, bytes, bool, Decimal])
+        t = random.choice([int, float, str, bytes, bool, Decimal, None])
         if t is int:
             return self.generate_int()
         elif t is float:
@@ -118,6 +118,8 @@ class FuzzTest(unittest.TestCase):
             return random.choice([True, False])
         elif t is Decimal:
             return Decimal(random.uniform(-1000000, 1000000))
+        elif t is None:
+            return None
 
     def generate_non_container(self, size_limit: int = 10_000) -> SerializableType:
         t = random.choice([PackableMapEntry, Wrapper, 'basic'])
@@ -136,9 +138,16 @@ class FuzzTest(unittest.TestCase):
             return self.generate_non_container()
         size_limit = 10_000 // recursive_limit
         count_limit = 100 // recursive_limit
-        t = random.choice(['basic', 'recursive', set, PackableMapEntry, Wrapper])
+        t = random.choice(
+            ['basic', 'bytearray', 'recursive', set, PackableMapEntry, Wrapper]
+        )
         if t == 'basic':
             return self.generate_basic_type(size_limit)
+        elif t == 'bytearray':
+            return bytearray(
+                random.randint(0, 255)
+                for _ in range(random.randint(0, size_limit))
+            )
         elif t == 'recursive':
             return self.generate_recursive_vector(recursive_limit - 1)
         elif t is set:

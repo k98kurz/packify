@@ -196,12 +196,15 @@ If you experience a bug and do not use Discord, open an issue on Github.
 
 ## Tests
 
-Since it is a focused package, there are only 18 tests, and they consist of e2e
-tests of both the `pack` and `unpack` functions, a few tests covering reported
-bugs, and 2 fuzz tests to broaden the coverage of the test suite added after the
-v0.3.0 refactor. To run the tests, clone the repository and use the following:
+There are only 40 tests, and they consist of e2e tests of both the `pack` and
+`unpack` functions, edge case/error detection unit tests, a few tests covering
+reported bugs, and 2 fuzz tests to broaden the coverage of the test suite added
+after the v0.3.0 refactor. To run the tests, clone the repository and use the
+following:
 
 ```bash
+python -m unittest discover tests/
+# or
 python tests/test_serialization.py
 python tests/test_fuzzy.py
 ```

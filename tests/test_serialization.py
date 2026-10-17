@@ -6,7 +6,11 @@ from packify import (
     MissingDependencyError,
     InvalidDependencyError
 )
-from packify.serialization import LengthCategory
+from packify.serialization import (
+    EncodedType,
+    LengthCategory,
+    _pack_packed_items
+)
 from dataclasses import dataclass, field
 from decimal import Decimal
 import struct
@@ -386,6 +390,60 @@ class TestUnpackCorruptInputs(unittest.TestCase):
             with self.subTest(label=label):
                 with self.assertRaises(ValueError):
                     unpack(data)
+
+    def test_corrupt_set_with_list_item_raises_ValueError(self):
+        """A set whose item is unhashable must raise `ValueError`, not
+            leak `TypeError`.
+        """
+        data = _pack_packed_items(EncodedType.SET.value, [pack([1, 2])])
+        with self.assertRaises(ValueError) as e:
+            unpack(data)
+        assert 'set item is not hashable' in str(e.exception)
+
+    def test_corrupt_set_with_dict_item_raises_ValueError(self):
+        """A set whose item is a dict must raise `ValueError`, not leak
+            `TypeError`.
+        """
+        data = _pack_packed_items(EncodedType.SET.value, [pack({'a': 1})])
+        with self.assertRaises(ValueError) as e:
+            unpack(data)
+        assert 'set item is not hashable' in str(e.exception)
+
+    def test_corrupt_dict_with_int_item_raises_ValueError(self):
+        """A dict whose item is not a key/value pair must raise
+            `ValueError`, not leak `TypeError`.
+        """
+        data = _pack_packed_items(EncodedType.DICT.value, [pack(42)])
+        with self.assertRaises(ValueError) as e:
+            unpack(data)
+        assert 'item is not a key/value pair' in str(e.exception)
+
+    def test_corrupt_dict_with_short_tuple_item_raises_ValueError(self):
+        """A dict whose item is a 1-tuple must raise `ValueError`, not
+            leak `IndexError`.
+        """
+        data = _pack_packed_items(EncodedType.DICT.value, [pack((1,))])
+        with self.assertRaises(ValueError) as e:
+            unpack(data)
+        assert 'item is not a key/value pair' in str(e.exception)
+
+    def test_corrupt_dict_with_str_item_raises_ValueError(self):
+        """A dict whose item is a str (subscriptable but not a pair)
+            must raise `ValueError` instead of silently mis-decoding.
+        """
+        data = _pack_packed_items(EncodedType.DICT.value, [pack('abcd')])
+        with self.assertRaises(ValueError) as e:
+            unpack(data)
+        assert 'item is not a key/value pair' in str(e.exception)
+
+
+class TestUnpackTrailingData(unittest.TestCase):
+    """Pins the behavior that `unpack` decodes a single value and
+        discards any trailing bytes.
+    """
+    def test_trailing_bytes_are_ignored(self):
+        for value in (1, 'hello', [1, 2], {'a': 1}, None):
+            assert unpack(pack(value) + b'trailing') == value, value
 
 
 class TestUnpackPackableDependencyErrors(unittest.TestCase):

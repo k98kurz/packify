@@ -410,11 +410,24 @@ def unpack(data: bytes, inject: dict = {}) -> SerializableType:
         if encoded_type == EncodedType.LIST:
             return items
         if encoded_type == EncodedType.SET:
-            return set(items)
+            try:
+                return set(items)
+            except TypeError as e:
+                raise ValueError(
+                    f'corrupt {type_name}: set item is not hashable: {e}'
+                ) from e
         if encoded_type == EncodedType.TUPLE:
             return tuple(items)
         if encoded_type == EncodedType.DICT:
-            return {pair[0]: pair[1] for pair in items}
+            for item in items:
+                vert(type(item) is tuple and len(item) == 2,
+                    f'corrupt {type_name}: item is not a key/value pair')
+            try:
+                return {pair[0]: pair[1] for pair in items}
+            except TypeError as e:
+                raise ValueError(
+                    f'corrupt {type_name}: dict key is not hashable: {e}'
+                ) from e
 
     if encoded_type in (EncodedType.BYTES, EncodedType.BYTEARRAY):
         vert(len(data) >= category.fmt_count(),
