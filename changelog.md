@@ -1,31 +1,33 @@
 ## 0.4.0
 
-- Added new `EncodedType.BIG_INT` and `EncodedType.BIG_NEG` for integers with
-  absolute value >= 2^2040, using a 4-byte length prefix that caps serialized
-  ints at 2^32 - 1 bytes; removed the associated `UsageError`
-- Corrected typo in command help text
-- Corrected Python requirement to 3.10+
-- Expanded agent skill docs: documented the new big-int wire format and added
-  a gotchas section
-- Hardened `unpack` against truncated and structurally corrupt input: it now
-  raises `ValueError` with descriptive messages instead of leaking bare
-  `struct.error`
-- `pack` now raises `TypeError` for non-serializable values
-- Replaced `UsageError` with a `DependencyError` hierarchy deriving from
-  `Exception`: `MissingDependencyError` and `InvalidDependencyError`
-  distinguish a missing dependency from an invalid one, and `UsageError`
-  remains as an alias of `DependencyError`
-- `unpack` resolves `Packable` dependencies only from `inject`; module
-  globals are no longer searched
-- `pack` dispatches on the exact value type via a precomputed handler
-  table and concatenates pre-serialized container items instead of
-  routing them through `struct.pack`, substantially improving
-  serialization performance (9x-50x faster in benchmarks)
-- `pack` now raises `OverflowError` when a serialized length exceeds
-  the 32-bit limit instead of leaking a bare `struct.error`
-- `unpack` raises `ValueError` for corrupt `Decimal` content and no longer
-  builds dependency/error state on the success path, substantially improving
-  deserialization performance (1.7x-2.7x faster in benchmarks)
+- Added support for big ints (absolute value >= 2^2040) via new
+  `EncodedType.BIG_INT` and `EncodedType.BIG_NEG`, using a 4-byte length prefix
+  that caps serialized ints at 2^32 - 1 bytes; removed the associated `UsageError`
+- Performance improvements:
+  - `pack` dispatches on the exact value type via a precomputed handler table
+    and concatenates pre-serialized container items instead of routing them
+    through `struct.pack`, substantially improving serialization performance
+    (9x-50x faster in benchmarks)
+  - `unpack` no longer builds dependency/error state on the success path,
+    substantially improving deserialization performance (1.7x-2.7x faster in
+    benchmarks)
+- Corrected typo in command help text and Python requirement to 3.10+
+- Expanded agent skill docs: documented the new big-int wire format and added a
+  gotchas section
+- Improved error handling:
+  - Replaced `UsageError` with a `DependencyError` hierarchy deriving from
+    `Exception`: `MissingDependencyError` and `InvalidDependencyError` distinguish
+    a missing dependency from an invalid one, and `UsageError` remains as an alias
+    of `DependencyError`
+  - `pack` now raises `TypeError` for non-serializable values
+  - `pack` now raises `OverflowError` when a serialized length exceeds the 32-bit
+    limit instead of leaking a bare `struct.error`
+  - `unpack` resolves `Packable` dependencies only from `inject`; module globals
+    are no longer searched
+  - `unpack` raises `ValueError` for corrupt `Decimal` content
+  - Hardened `unpack` against truncated and structurally corrupt input: it now
+    raises `ValueError` with descriptive messages instead of leaking bare
+    `struct.error`
 
 ## 0.3.4
 
