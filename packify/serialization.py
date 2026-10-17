@@ -133,7 +133,7 @@ def _code_error(code: int) -> str:
 
 def decode(code: int) -> tuple[LengthCategory, EncodedType]:
     """Decodes a code into a length category and encoded type. Raises
-        ValueError if the code is corrupt.
+        `ValueError` if the code is corrupt.
     """
     info = _CODE_TABLE[code]
     if info is None:
@@ -167,33 +167,33 @@ def _pack_float(data: float) -> bytes:
 
 
 def _pack_str(data: str) -> bytes:
-    """Packs a str into a type code, a length prefix, and its utf-8
+    """Packs a `str` into a type code, a length prefix, and its utf-8
         encoded bytes.
     """
     return _pack_len_prefixed(EncodedType.STR.value, data.encode())
 
 
 def _pack_bytes(data: bytes) -> bytes:
-    """Packs bytes into a type code, a length prefix, and the value."""
+    """Packs `bytes` into a type code, a length prefix, and the value."""
     return _pack_len_prefixed(EncodedType.BYTES.value, data)
 
 
 def _pack_bytearray(data: bytearray) -> bytes:
-    """Packs a bytearray into a type code, a length prefix, and the
+    """Packs a `bytearray` into a type code, a length prefix, and the
         value.
     """
     return _pack_len_prefixed(EncodedType.BYTEARRAY.value, data)
 
 
 def _pack_decimal(data: Decimal) -> bytes:
-    """Packs a Decimal into a type code, a length prefix, and its
+    """Packs a `Decimal` into a type code, a length prefix, and its
         utf-8 encoded string representation.
     """
     return _pack_len_prefixed(EncodedType.DECIMAL.value, str(data).encode())
 
 
 def _pack_int(data: int) -> bytes:
-    """Packs an int into a type code and a fixed-width value, using
+    """Packs an `int` into a type code and a fixed-width value, using
         `EncodedType.NEG_INT` for negatives and `EncodedType.BIG_INT`
         or `EncodedType.BIG_NEG` when the value needs more than 255
         bytes.
@@ -242,7 +242,7 @@ def _pack_packed_items(code: int, items: list[bytes]) -> bytes:
 
 
 def _pack_list(data: list) -> bytes:
-    """Packs a list by serializing each item and concatenating the
+    """Packs a `list` by serializing each item and concatenating the
         results behind a shared header.
     """
     return _pack_packed_items(
@@ -252,7 +252,7 @@ def _pack_list(data: list) -> bytes:
 
 
 def _pack_tuple(data: tuple) -> bytes:
-    """Packs a tuple by serializing each item and concatenating the
+    """Packs a `tuple` by serializing each item and concatenating the
         results behind a shared header.
     """
     return _pack_packed_items(
@@ -262,7 +262,7 @@ def _pack_tuple(data: tuple) -> bytes:
 
 
 def _pack_set(data: set) -> bytes:
-    """Packs a set by serializing each item, sorting the packed items
+    """Packs a `set` by serializing each item, sorting the packed items
         for a deterministic serialized format, and concatenating the
         results behind a shared header.
     """
@@ -272,7 +272,7 @@ def _pack_set(data: set) -> bytes:
 
 
 def _pack_dict(data: dict) -> bytes:
-    """Packs a dict by packing each key/value pair as a tuple, sorting
+    """Packs a `dict` by packing each key/value pair as a tuple, sorting
         the packed pairs for a deterministic serialized format, and
         concatenating the results behind a shared header.
     """
@@ -311,9 +311,9 @@ _PACK_HANDLERS = MappingProxyType({
 
 
 def pack(data: SerializableType) -> bytes:
-    """Serializes an instance of a Packable implementation or built-in
+    """Serializes an instance of a `Packable` implementation or built-in
         type, recursively calling itself as necessary. Raises TypeError
-        if the type is not serializable and OverflowError if a
+        if the type is not serializable and `OverflowError` if a
         serialized value would need a length prefix beyond the 32-bit
         limit. Dicts and sets are sorted for deterministic serialized
         format that is consistent between environments (e.g. Python
@@ -339,11 +339,11 @@ _unpack_container_types_dict = {
 }
 
 def unpack(data: bytes, inject: dict = {}) -> SerializableType:
-    """Deserializes an instance of a Packable implementation
+    """Deserializes an instance of a `Packable` implementation
         or built-in type, recursively calling itself as necessary.
-        Raises ValueError if the input is truncated or corrupt, or
-        DependencyError if a dependency class required to unpack a
-        Packable implementation is missing or invalid.
+        Raises `ValueError` if the input is truncated or corrupt, or
+        `DependencyError` if a dependency class required to unpack a
+        `Packable` implementation is missing or invalid.
     """
     vert(len(data) >= 1,
         'data is truncated; missing type code (got 0 bytes)')

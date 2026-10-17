@@ -1,4 +1,4 @@
-## 0.4.0 (WIP)
+## 0.4.0
 
 - Added new `EncodedType.BIG_INT` and `EncodedType.BIG_NEG` for integers with
   absolute value >= 2^2040, using a 4-byte length prefix that caps serialized

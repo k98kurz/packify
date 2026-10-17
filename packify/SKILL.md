@@ -1,25 +1,18 @@
 ---
 name: packify
-description: Serialize Python data structures to/from bytes for reliable storage, transmission, and API integration. Handles complex nested data and custom objects with deterministic output. Use when users need to save, send, encode, decode, or convert data — whether they mention serialization, packing, or simply need to store or transfer complex Python structures.
+description: Serialize and deserialize Python data structures to and from bytes for storage, transmission, or API integration. Handles arbitrarily nested built-ins and custom objects implemented via the `Packable` protocol, with deterministic, version-independent output and exact type preservation. Use this skill when the user needs to save, send, encode, decode, pack, unpack, or convert complex Python structures to bytes or back, even if they don't mention serialization by name.
 license: ISC
 compatibility: Requires Python 3.10+
 metadata:
   version: "0.4.0"
-  last-updated: "2026-10-14"
+  last-updated: "2026-10-17"
   author: "Jonathan Voss"
-  library-name: "packify"
   repository: "https://github.com/k98kurz/packify"
 ---
 
 # Packify
 
 Universal serialization for Python data structures to/from bytes.
-
-## When to Use
-
-- Serialize complex, nested data structures for storage or transmission
-- Support custom types via the `Packable` protocol
-- Ensure deterministic, version-independent serialization
 
 ## Quick Start
 
@@ -38,9 +31,11 @@ data = packify.unpack(packed, inject={})  # inject provides custom types
 Built-in: `int`, `bool`, `float`, `Decimal`, `str`, `bytes`, `bytearray`, `NoneType`, `list`, `tuple`, `set`, `dict`
 
 All types can be nested arbitrarily. Ints of effectively any size are supported
-(0.4.0+); values needing 256 or more bytes (absolute value >= 2**2040) use an
-extended 4-byte length prefix instead of a single size byte. That prefix caps a
-serialized integer at 2**32 - 1 bytes.
+(0.4.0+). Values with magnitude below `2**32` pack into a compact 1-, 2-, or
+4-byte field with no separate size prefix. Larger values carry a length prefix:
+one byte for those needing up to 255 bytes, or an extended 4-byte prefix for
+those needing 256 or more (absolute value >= `2**2040`). The 4-byte prefix caps
+a serialized integer at `2**32 - 1` bytes.
 
 ## Named Tuples
 
@@ -103,8 +98,6 @@ unpacked = packify.unpack(packed, inject={'User': User})
 - Only exact built-in types are serialized recursively. Subclasses such as
   `IntEnum`, `int`/`str` subclasses, and `namedtuple` raise `TypeError`;
   convert them (`int(v)`, `tuple(v)`) or implement `Packable`.
-- Ints up to `2**32` - 1 bytes when serialized are supported as of 0.4.0; the
-  old `UsageError` for values >= `2**2040` no longer exists.
 - Truncated or corrupt input raises `ValueError` with a descriptive message
   from `unpack`; bare `struct.error` never escapes.
 - Values whose serialized length reaches 2**32 bytes raise `OverflowError`

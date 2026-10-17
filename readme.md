@@ -107,7 +107,7 @@ class Packable(Protocol):
         ...
 
     @classmethod
-    def unpack(cls, data: bytes, /, *, inject: dict = {}) -> Packable:
+    def unpack(cls, data: bytes, inject: dict = {}) -> Packable:
         """Unpacks an instance from bytes. Must accept dependency
             injection to unpack other Packable types.
         """
@@ -153,10 +153,13 @@ As long as the class implements the `Packable` protocol, it can be included in
 lists, sets, tuples, and dicts (assuming it is hashable for set or to be used as
 a dict key), and it will just work.
 
-The `pack` function will raise a `TypeError` if the data is not serializable,
+The `pack` function will raise a `TypeError` if the data is not serializable and
+an `OverflowError` if a serialized value would exceed the 32-bit length limit,
 and the `unpack` function will raise a `ValueError` if the data is truncated or
 corrupt, or a `DependencyError` if it is unable to find or use a `Packable`
-class to unpack the relevant item.
+class to unpack the relevant item. The `MissingDependencyError` and
+`InvalidDependencyError` subclasses distinguish a missing dependency from an
+invalid one.
 
 For convenience/use in annotations, a `SerializableType` is exported which
 includes the above type information.
@@ -171,6 +174,9 @@ The `packify` package includes a CLI for exporting the agent skill to various AI
 coding environments:
 
 ```bash
+# Print version
+packify --version
+
 # Print skill to stdout
 packify skill
 

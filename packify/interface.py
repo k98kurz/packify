@@ -4,6 +4,7 @@ from typing import Protocol, runtime_checkable
 
 @runtime_checkable
 class Packable(Protocol):
+    """Interface for custom packify-able classes."""
     def pack(self) -> bytes:
         """Packs the instance into bytes."""
         ...

@@ -2,7 +2,9 @@ from typing import Callable
 
 
 class DependencyError(Exception):
-    """Raised when a `Packable` dependency cannot be resolved."""
+    """Base class for errors raised when a `Packable` dependency cannot
+        be resolved. Alias: `UsageError`.
+    """
     ...
 
 
@@ -33,8 +35,8 @@ def mdsert(packed_class: str, dependencies: dict) -> None:
 
 
 def idsert(packed_class: str, resolved_class: type) -> None:
-    """Raises a `InvalidDependencyError` if the `packed_class` does not
-        have the required `unpack` method.
+    """Raises a `InvalidDependencyError` if the `resolved_class` does
+        not have the required `unpack` method.
     """
     if hasattr(resolved_class, 'unpack'):
         return
@@ -42,16 +44,16 @@ def idsert(packed_class: str, resolved_class: type) -> None:
 
 
 def tert(condition: bool, msg: str|Callable[[], str] = 'invalid type') -> None:
-    """Raises a TypeError with the given error_message if the condition
-        is False.
+    """Raises a `TypeError` with the given error `msg` if the condition
+        is `False`.
     """
     if not condition:
         raise TypeError(msg() if callable(msg) else msg)
 
 
 def vert(condition: bool, msg: str|Callable[[], str] = 'invalid value') -> None:
-    """Raises a ValueError with the given error_message if the condition
-        is False.
+    """Raises a `ValueError` with the given error `msg` if the condition
+        is `False`.
     """
     if not condition:
         raise ValueError(msg() if callable(msg) else msg)

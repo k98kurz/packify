@@ -1,7 +1,8 @@
-import argparse
-import shutil
+from packify.version import version
 from pathlib import Path
 from importlib.resources import files
+import argparse
+import shutil
 
 
 def get_skill_command(output_dir: str | None = None) -> None:
@@ -62,7 +63,13 @@ def main() -> None:
     """Main CLI entry point."""
     parser = argparse.ArgumentParser(
         prog='packify',
-        description='Automagical universal serialization library'
+        description=f'Automagical universal serialization library, v{version()}'
+    )
+
+    parser.add_argument(
+        '-v', '--version',
+        action='version',
+        version=f'%(prog)s {version()}'
     )
 
     subparsers = parser.add_subparsers(
